@@ -1,0 +1,36 @@
+id = "local.agent-academy"
+name = "Agent Academy"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+platforms = ["linux", "macos"]
+description = "Codex çalışmalarını yerel, kanıta dayalı mühendislik derslerine dönüştürür."
+
+[[build]]
+command = ["npm", "ci"]
+
+[[build]]
+command = ["npm", "run", "build"]
+
+[[panes]]
+id = "academy"
+title = "Agent Academy"
+placement = "split"
+command = ["node", "--disable-warning=ExperimentalWarning", "dist/cli.js", "--pane"]
+
+[[actions]]
+id = "open"
+title = "Academy: aç"
+contexts = ["pane", "workspace"]
+command = ["node", "--disable-warning=ExperimentalWarning", "dist/cli.js", "--action", "open"]
+
+[[actions]]
+id = "close"
+title = "Academy: kapat"
+contexts = ["pane", "workspace"]
+command = ["node", "--disable-warning=ExperimentalWarning", "dist/cli.js", "--action", "close"]
+
+[[actions]]
+id = "toggle"
+title = "Academy: aç / kapat"
+contexts = ["pane", "workspace"]
+command = ["node", "--disable-warning=ExperimentalWarning", "dist/cli.js", "--action", "toggle"]

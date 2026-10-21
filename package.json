@@ -1,0 +1,44 @@
+{
+  "name": "agent-academy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first engineering learning companion for Codex and Herdr",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "bin": {
+    "agent-academy": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --disable-warning=ExperimentalWarning dist/cli.js",
+    "dev": "tsx src/cli.tsx",
+    "demo": "node --disable-warning=ExperimentalWarning dist/cli.js --demo",
+    "test": "vitest run",
+    "lint": "eslint src tests && tsc --noEmit -p tsconfig.json",
+    "check": "npm run lint && npm test && npm run build",
+    "smoke:provider": "npm run build && node scripts/smoke-provider.mjs"
+  },
+  "dependencies": {
+    "cli-highlight": "^2.1.11",
+    "ink": "^8.0.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.3.1",
+    "string-width": "^8.3.0",
+    "wrap-ansi": "^10.0.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "eslint": "^10.13.0",
+    "ink-testing-library": "^4.0.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.0.5"
+  }
+}

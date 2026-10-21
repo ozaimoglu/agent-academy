@@ -1,0 +1,205 @@
+# Agent Academy · Kullanım rehberi
+
+**Codex çalışırken, sen mühendisliği öğren.** Ubuntu 24.04 ve Herdr için Türkçe, yerel öncelikli bir terminal öğrenme arkadaşı. Kodlama ajanının oturumunu gözlemler; görevleri, hataları, değişiklikleri ve gerçek test sonuçlarını kanıta bağlı derslere dönüştürür. Codex’e giriş göndermez ve uygulama deponuzu değiştirmez.
+
+Bu MVP çalışır uygulama kodunu, Herdr plugin’ini, onboarding’i, SQLite kalıcılığını, gerçek Codex JSONL gözlemini, OpenAI uyumlu sağlayıcıyı, Q&A ve Markdown raporlarını içerir. API anahtarı olmadan çevrimdışı kullanılabilir. Derin teknoloji açıklamaları ve soru-cevap için bir açıklama modeli gerekir.
+
+## Hızlı başlangıç
+
+Gereksinimler: **Node.js ≥22.19**, npm, Git ve **Herdr ≥0.9.3**. Ubuntu’nun varsayılan Node paketi eski olabilir; önce `node --version` ile kontrol edin. [Node kurulumu](https://nodejs.org/en/download).
+
+```bash
+cd /path/to/agent-academy
+./scripts/install.sh
+```
+
+Script bağımlılıkları yükler ve derler. Global Herdr veya Codex ayarlarınızı değiştirmez. Plugin’i kaydetmek için şu komutu **kendiniz** çalıştırın:
+
+```bash
+herdr plugin link "$PWD"
+```
+
+Ardından Herdr içindeki **Codex’in bulunduğu pane’den** açın:
+
+```bash
+herdr plugin action invoke local.agent-academy.open
+```
+
+Sağda varsayılan %38 genişliğinde kalıcı bir terminal pane’i açılır. Codex normal biçimde çalışmaya devam eder. İlk açılışta dört kısa ekran gelir: derinlik, öğretim tarzı, öğrenme öncelikleri ve açıklama sağlayıcısı. Varsayılanlar: **Derinlemesine**, görsel + kod + temeller + senior mühendis yaklaşımı, Everything ve çevrimdışı sağlayıcı.
+
+```bash
+herdr plugin action invoke local.agent-academy.toggle
+herdr plugin action invoke local.agent-academy.close
+```
+
+`./scripts/install.sh --link` derleme ve global plugin kaydını birlikte yapar; yalnızca bu kaydı yapmak istediğinizde kullanın. `plugin link` Herdr’ün global plugin kaydını değiştirir. Uygulama kendiliğinden kurulum/kayıt yapmaz.
+
+## API anahtarı olmadan dene
+
+```bash
+npm run demo
+```
+
+Demo gerçek JSONL adaptörünü, ders motorunu, kaynak kanıtlarını ve rapor hattını çalıştırır. İzole geçici bir proje ve veritabanı kullanır; dış model çağırmaz. Spring transaction senaryosu **kaydedilmiş test fixture’ıdır**. Java testleri demo sırasında çalıştırılmaz; örnek Java dosyaları bağımsız derlenebilir bir Spring projesi değildir.
+
+```bash
+# Onboarding’i atlayarak TUI
+npm run demo -- --no-onboarding
+
+# Terminal gerektirmeyen deterministik Markdown raporu
+node --disable-warning=ExperimentalWarning dist/cli.js --demo --headless > demo-report.md
+```
+
+Gerçek projeyi Herdr dışında izlemek için:
+
+```bash
+npm start -- --project /absolute/path/to/project
+```
+
+Yalnızca seçili projenin kanonik cwd’siyle eşleşen oturumlar kabul edilir. Codex’i bir alt dizinde çalıştırdıysanız aynı alt dizini seçin. Herdr eylemi hedef pane’in gerçek foreground cwd’sini kullanır.
+
+## Terminal kullanımı
+
+| Tuş                | İşlem                                               |
+| ------------------ | --------------------------------------------------- |
+| `1`–`6`, Tab, ←/→  | LIVE, WHY, CODE, VISUALIZE, ASK, REPORT             |
+| ↑/↓ veya J/K       | Kaydır                                              |
+| Space, PgDn / PgUp | Sayfa kaydır                                        |
+| S                  | Ayarlar / onboarding’i yeniden çalıştır             |
+| C                  | Aynı projedeki Codex oturumunu elle seç             |
+| G                  | Güncel kanıtlardan açıklama iste                    |
+| E                  | Markdown raporunu Academy state dizinine aktar      |
+| Z                  | Academy pane’ini Herdr zoom ile genişlet / geri dön |
+| Q, Ctrl+C          | Yalnızca Academy’den çık                            |
+| `[` / `]`          | Önceki / sonraki ders                               |
+| WHY: `,` / `.`     | Önceki / sonraki ders bölümü                        |
+| WHY: Enter         | İçindekiler / odaklı okuma                          |
+| CODE: N            | Sonraki diff / kaynak parçası                       |
+| ASK: A             | Kendi sorunu yaz; Enter gönder, Esc iptal           |
+| ASK: P / K         | Hazır soruyu / seçili kavramı değiştir              |
+| ASK: Enter         | Seçili hazır soruyu sor                             |
+
+Ayarlar ekranında `1`–`4` ilgili tercihe gider. Çoklu seçimde Space kullanın. AI ekranında Space sağlayıcıyı seçer, A gelişmiş ayarları açar. Alan üzerinde Enter düzenler. Genişlik, sıklık, bağlam ve çıktı bütçeleri düzenlenebilir. Panel genişliği bir sonraki açılışta uygulanır.
+
+WHY uzun metni tek ekrana sıkıştırmaz. Bölümler ayrı okunur, içindekiler açılıp kapanır. CODE gerçek yama, HEAD farkı ve satır numaralı kaynak görüntüler. VISUALIZE kanıtlı model ilişkilerini veya gözlenen olay sırasını Unicode kutularla gösterir. Sıra diyagramı mimari nedensellik iddiası değildir. ASK geçmişi seçili derse bağlı kalır. Görünümler en az 24 sütun × 12 satır ister; 38 sütunlu pane için dar düzen vardır. Daha derin okuma için Z kullanın.
+
+## Açıklama modeli yapılandırma
+
+**Hiçbir anahtar varsayılmaz.** Onboarding ve S → 4 içinde sağlayıcı seçin. Kimlik doğrulama için yalnızca ortam değişkeninin adını girin; anahtarın kendisi kaydedilmez.
+
+### Yerel Ollama / OpenAI uyumlu sunucu
+
+Sunucunuzu kendi kurulum yönergeleriyle başlatın ve kurulu model adını kullanın (`ollama list`).
+
+- Tür: Ollama / yerel model
+- Adres: `http://127.0.0.1:11434/v1`
+- Model: kurulu yerel modelin tam adı
+- Anahtar ortam değişkeni: genellikle boş
+
+Yerel mod yalnızca loopback adreslerini kabul eder. LAN sunucuları uzak sağlayıcı olarak yapılandırılmalı ve HTTPS kullanmalıdır. Yerel Ollama üzerinden **bulut modeli** seçmek de veri dışarı gönderebilir; yerel modda gerçekten yerel model kullanın. Uygulama bir localhost sunucusunun arkasındaki yönlendirmeyi doğrulayamaz.
+
+### Uzak OpenAI uyumlu API
+
+- Tür: Uzak OpenAI uyumlu API
+- Adres: örneğin `https://api.openai.com/v1`
+- Model: hesabınızın erişebildiği modelin tam adı
+- Anahtar ortam değişkeni: örneğin `ACADEMY_API_KEY`
+
+Ortam değişkeni Academy işlemi tarafından görülebilmeli. Herdr’ün plugin işlemleri server ortamını kullanır; anahtarı Herdr’ü başlatmadan önce güvenli biçimde sağlayın veya bağımsız TUI’yi ilgili shell’den başlatın. Çalışan bir shell’de değişken tanımlamak, önceden başlamış Herdr server’ın ortamını değiştirmez.
+
+**Proje + adres + model için açık izin ekranı** gösterilir. İzin olmadan kaynak bağlamı uzak modele gönderilmez. Başka projede tekrar izin gerekir; sağlayıcı/model/adres değişikliği önceki izni geçersiz kılar. İzin verilen bağlam: seçilmiş görev mesajları, ilgili açık ajan mesajları, komut sonuçları, diff ve sınırlı kaynak parçaları. Oturumun tamamı gönderilmez. Ağ yönlendirmeleri takip edilmez.
+
+HTTP sağlayıcı `/chat/completions` kullanır. Yerel sunucuda `max_tokens`, uzak API’de varsayılan `max_completion_tokens` gönderir. Eski uyumlu sunucular için gelişmiş ayarlarda token alanını `max_tokens` yapabilirsiniz. Her uyumlu sunucu/model yapılandırılmış JSON üretimini eşit derecede iyi desteklemez; geçersiz veya kesilmiş yanıtta açık hata ve çevrimdışı kanıt dersi gösterilir.
+
+Varsayılan otomatik analiz aralığı 60 saniye, seçilmiş kanıt bütçesi 40.000 karakter, çıktı bütçesi 8.192 tokendır. Derin modda birkaç paragraf sınırı yoktur; çıktı bütçesi 32.768’e kadar ayarlanabilir. Görev, uygulama, doğrulama ve tamamlanma gibi aşamalar birleştirilir; her shell komutu model çağrısı üretmez. `autoAnalyze=false` otomatik açıklamayı durdurur; G elle açıklama ister. Gerçek token kullanımı mevcutsa kaydedilir; yoksa açıkça **tahmini** etiketiyle gösterilir. Para cinsinden maliyet tahmin edilmez. Model hatasında sağlayıcının kullanım verisi dönmemişse tüketim bilinemez.
+
+### Mevcut Codex CLI
+
+Kurulu Codex 0.163.0’da `exec --ephemeral --sandbox read-only --ignore-user-config` doğrulandı. Ancak salt okunur sandbox, yalnızca seçilmiş proje bağlamını okuyabilen **araçsız bir öğretmen** garantisi vermiyor. Bu MVP ikinci Codex oturumu başlatmaz; seçenek arayüzde gerekçesiyle devre dışıdır. Açıklama için yerel veya uzak HTTP sağlayıcısı kullanın. Böylece öğretim oturumu kodlama oturumu olarak keşfedilemez. Gizli düşünce zinciri hiçbir sağlayıcı bağlamına alınmaz.
+
+## Gözlem ve kanıt modeli
+
+- Codex normal biçimde başlatılır. Wrapper, hook veya Codex config değişikliği gerekmez.
+- `$CODEX_HOME/sessions` (varsayılan `~/.codex/sessions`) altında mevcut JSONL dosyaları keşfedilir.
+- Herdr’ün hedef pane’inde `agent_session` varsa önce bu kimlik eşleştirilir. Yoksa tek cwd eşleşmesi otomatik bağlanır. Birden fazla eşleşmede en yenisi tahmin edilmez; C ile seçilir.
+- Kullanıcı seçim yaptıktan sonra seçim sabit kalır. Otomatik modda güvenilir Herdr oturum kimliği değişirse yeni oturuma geçilir. Kimlik belirsizleşirse mevcut seçim korunur ve seçim ekranı kullanılabilir.
+- Legacy `event_msg` / `response_item` ve Codex 0.163’ün `item_completed` komut/mesaj kayıtları desteklenir. Reasoning ve encrypted içerik atlanır.
+- Tamamlanmamış JSONL satırı checkpoint’i ilerletmez. UTF-8 byte offset, dosya kimliği, prefix hash, SQLite transaction ve normalize event kimlikleri yeniden bağlanmada tekrarları engeller. Dosya değiştirme, küçülme, yeni tarih dizinleri ve aynı session ID’ye ait yeni rollout keşfedilir.
+- Bir satır 1 MiB’ı aşarsa açık uyarıyla atlanır. Okuma parti başına 1 MiB, UI bağlamı son 400 olay + geçerli görev ile sınırlıdır. Keşif en çok 20.000 dosya tarar, en güncel 5.000 adayın metadata’sını değerlendirir.
+- Git salt okunur komutlarla HEAD → çalışma ağacı farkını ve ilgili satırları toplar. Fark başka aktörlerin değişikliklerini de içerebilir. Açık `apply_patch` yollarından yeni/izlenmeyen dosyaların kaynak parçaları da alınır. Kaydedilmemiş editör tamponlarına erişilmez.
+- Başlangıç, komut sonucu, çıkış kodu, açık kök neden gözlemi, değişiklik ve Codex tur tamamlanması ayrı kanıtlardır. Test gibi görünen komutlar gözlenen sonuç olarak listelenir; Academy bunları çalıştırmaz. Sıfır çıkış kodu test kapsamının yeterli olduğunu kanıtlamaz.
+- Her ders 11 bölüme ayrılır: olay, problem, kanıt, kök neden, mekanizma, gerçek kod, çözüm gerekçesi, alternatif, ödünleşim, doğrulama ve öğrenilecek kavramlar. Model atıflarının seçilen kanıt kümesinde bulunması doğrulanır. Bunun teknik doğruluğu kanıtladığı iddia edilmez.
+- Güven düzeyleri: Doğrulandı / Güçlü destek / Hipotez / Bilinmiyor. Doğrudan kayıtlar doğrulanmış gözlemdir; modelin yeni iddiaları otomatik olarak “Doğrulandı” seviyesine yükseltilmez.
+
+App Server araştırıldı. Bir uygulamanın sahip olduğu oturumları yönetmek için uygundur; bu MVP’nin mevcut bağımsız CLI süreçlerine pasif bağlanma yöntemi olarak kullanılmaz. JSONL rollout biçimi resmi, sabit bir gözlem API’si değildir; sürüm değişikliklerinde adaptör güncellenebilir.
+
+## Yerel veri ve gizlilik
+
+| Veri                    | Varsayılan konum                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| Bağımsız ayarlar        | `$XDG_CONFIG_HOME/agent-academy/settings.json` veya `~/.config/agent-academy/settings.json` |
+| Bağımsız SQLite / rapor | `$XDG_STATE_HOME/agent-academy` veya `~/.local/state/agent-academy`                         |
+| Herdr ayarları          | `HERDR_PLUGIN_CONFIG_DIR/settings.json`                                                     |
+| Herdr SQLite / rapor    | `HERDR_PLUGIN_STATE_DIR`                                                                    |
+| Rapor                   | `STATE/reports/REPO_HASH/SESSION_HASH.md`                                                   |
+
+`ACADEMY_CONFIG_DIR`, `ACADEMY_STATE_DIR`, `ACADEMY_SESSIONS_DIR` veya CLI’nin `--config-dir`, `--state-dir`, `--sessions-dir` seçenekleriyle konumlar değiştirilebilir. Herdr ve bağımsız mod varsayılan olarak kendi ayar dizinlerini kullanır. `--demo` her çalıştırmada ayrı geçici dizin oluşturur; çıktıda görülen demo dizinleri inceleme sonrasında silinebilir.
+
+SQLite WAL modu kullanılır. Yerel dosyalar 0600, oluşturulan dizinler 0700 izinlidir. Ham transcript kopyası ve kimlik bilgisi saklanmaz; maskelenmiş normalleştirilmiş kanıtlar, dersler, Q&A, kullanım ve byte checkpoint’leri saklanır. Görev deposu, dal ve commit bilindiği ölçüde rapora bağlanır. Saklama süresi otomatik sınırlandırılmaz; yerel Academy state dizinini silmek geçmişi temizler. Önce Academy pane’lerini kapatın.
+
+Kaynak okuma gerçek dosya yolunu çözer; seçili proje dışına çıkan symlink’ler, `.env`, `.ssh`, `.aws`, `.git`, özel anahtar ve benzeri hassas yollar engellenir. Kaynak dosyası en çok 512 KiB, bir parça en çok 120 satırdır. Komut ve model çıktılarında açık token, şifre, authorization, özel anahtar ve terminal kaçış dizileri temizlenir. **Maskeleme bütün sırları yakalayamaz.** Kod ve dokümanlar model için talimat değil, güvenilmeyen veri olarak etiketlenir. HTTP sağlayıcısına hiçbir çalıştırılabilir araç verilmez.
+
+Academy git commit/push, kod düzenleme, agent prompt/send-text veya lifecycle override yapmaz. Eylemler yalnızca kendisinin açtığı, proses kimliği doğrulanan Academy pane’ini kapatır. Workspace ve socket kimliği ayrı tutulur. Pane’ler workspace’ler arasında taşınırsa güvenli biçimde kapatıp doğru Codex pane’inden yeniden açın; hareketi izleyerek varsayımsal yeniden eşleme yapılmaz.
+
+## Doğrulama ve geliştirme
+
+```bash
+npm ci
+npm run check
+# lint + TypeScript, Vitest testleri ve build
+
+npm run smoke:provider
+# Gerçek loopback HTTP sözleşmesi: yerel fixture sunucusu; API anahtarı/model gerekmez
+
+npm start -- --doctor
+npm start -- --help
+```
+
+Testler onboarding klavye akışını, ayar kalıcılığını, çoklu oturum/proje ayrımını, kısmi UTF-8 JSONL’yi, tekrarları, dosya değişimini, restart checkpoint’lerini, gerçek Git diff’ini, milestone sınıflandırmasını, kaynak sınırlarını, maskelemeyi, sağlayıcı hatalarını/iptalini, kanıt atıflarını, sıklık kontrolünü, Q&A bağlamını, raporu ve Herdr CLI sözleşmesini kapsar. Ağsız testler Fetch Request/Response sözleşmesini bellek içinde doğrular; `smoke:provider` gerçekten TCP bağlantısı açar.
+
+Bu geliştirme ortamında Node 22.19 / Herdr 0.9.3 / Codex 0.163.0 kullanıldı. Build, lint, otomatik testler ve gerçek bu-proje Codex kayıtlarının keşfi/komut ayrıştırması doğrulandı. **Sandbox gerçek Herdr socket erişimini ve loopback TCP dinlemeyi engelledi.** Global kayıt değiştirilmedi; gerçek Herdr sağ pane aç/kapa ve gerçek model kalitesi bu ortamda uçtan uca doğrulanamadı. [Ayrıntılı doğrulama notları](verification.md).
+
+### Canlı Herdr kabul kontrolü
+
+Kendi Ubuntu ortamınızda link işleminden sonra:
+
+1. Codex’i her zamanki gibi başlatın ve yeni bir görev verin.
+2. Academy open eylemini çağırın; sağ pane’in yaklaşık %38 olduğunu kontrol edin.
+3. Onboarding’i tamamlayın, gerekirse C ile oturumu seçin.
+4. Codex komut ve test çalıştırırken LIVE kayıtlarının geldiğini doğrulayın.
+5. Yerel model ayarlayın; G, WHY ve ASK ile kanıta bağlı yanıtları inceleyin.
+6. Codex turu bitince REPORT / E ile raporu kontrol edin.
+7. Toggle/close çağırın; Codex’in çalışmaya devam ettiğini doğrulayın.
+8. İkinci workspace’te farklı proje başlatın; oturumların karışmadığını kontrol edin.
+
+## Sorun giderme ve MVP sınırları
+
+**“Oturum bekleniyor”**: Codex JSONL kaydı oluşturmalı; `--ephemeral` kodlama oturumu gözlenemez. `--doctor` ile dizini kontrol edin. Proje alt dizini, symlink ve worktree yolu farklı olabilir. `--project` tam Codex cwd’si olmalı. Birden çok oturumda C kullanın.
+
+**Pane açılmıyor**: `npm run build`, `herdr --version`, `herdr plugin action list --plugin local.agent-academy` ve `herdr plugin log list --plugin local.agent-academy` kontrol edin. Eylemi Herdr içindeki hedef Codex pane’inden çalıştırın. Herdr 0.9.3’ten eski sürümde plugin çalışmaz. Popup width alanları split yüzdesi değildir; gerçek resize API’si kullanılır.
+
+**“Model kullanılamadı”**: Ayarlar → 4 → A içinde tam model adını, `/v1` adresini, key ortam değişkenini ve token alanını kontrol edin. 401/403 yetki, bağlantı hatası sunucu erişimi, geçersiz JSON ise modelin ders şemasını tamamlayamadığı anlamına gelebilir. Kesilmede çıktı bütçesini artırın. Otomatik deneme yağmuru yapılmaz; aralığı bekleyin veya G kullanın. Model 120 saniye içinde yanıt vermelidir. Model API hata gövdesi sır sızdırmamak için ekrana basılmaz.
+
+**Dar görünüm**: Z ile pane’i yakınlaştırın. WHY için bölüm seçimini, Space/PgDn ile sayfa kaydırmayı kullanın. Terminalde HTML veya keyfi resim render edilmez. Görüntü protokolü ve browser viewer bu MVP’de yoktur.
+
+**Biçim değişti / komut görünmüyor**: JSONL iç protokolü değişebilir. Tanınmayan araçlar çalıştırılmaz ve bilinmeyen araç çıktıları shell sonucu sayılmaz. Shell komutu içinde yapılan bütün dosya değişikliklerini veya tüm test araçlarının semantiğini eksiksiz tanımak garanti edilmez. Git anlık görüntüsü bu boşluğu kısmen doldurur. Kod commit edilmeden önce gözlenmemiş ve HEAD ilerlemişse tam önce/sonra yeniden oluşturulamaz.
+
+**Rapor ve bellek sınırı**: Rapor son 3.000 olay + ilk görev, son 200 ders ve ders başına son 10 Q&A üzerinden oluşturulur; toplam Markdown 2 MiB ile sınırlıdır. UI son 100 dersi ve seçili dersin son 100 Q&A’sını açar; daha eski veriler SQLite’ta kalır. Uzun oturumlarda kapsam raporda belirtilir. SQLite/rapor, kaynak deponuzun dışında tutulmalıdır; kullanıcı `--state-dir` ile açıkça depo içini seçerse bu sınırı kendisi değiştirir.
+
+**Henüz kapsamda olmayanlar**: Claude Code/OpenCode somut adaptörleri (arayüz hazır), otomatik resmi teknik doküman getirme, tam semantik çağrı grafiği, bağımsız kod/test doğrulayıcısı, resim protokolleri, browser viewer, tam metin geçmiş arama ve ikinci Codex açıklama oturumu. Offline mod öğretici bir kanıt iskeleti sağlar; model olmadan ayrıntılı framework dersi uydurmaz.
+
+## Kaynaklar ve mimari
+
+Mimarinin gerekçesi ve doğrulanmış sürümler: [docs/architecture.md](architecture.md).
+
+Entegrasyon ayrıntıları [Herdr plugins](https://herdr.dev/docs/plugins/), [CLI](https://herdr.dev/docs/cli-reference/) ve [socket API](https://herdr.dev/docs/socket-api/) üzerinden doğrulandı. [herdr-reviewr](https://github.com/persiyanov/herdr-reviewr) yaşam döngüsü, kurulum ve pane yönetimi için incelendi; uygulaması kopyalanmadı. [Codex protokol kaynağı](https://github.com/openai/codex/blob/main/codex-rs/protocol/src/protocol.rs), [noninteractive belgeleri](https://developers.openai.com/codex/noninteractive/) ve [App Server](https://developers.openai.com/codex/app-server/) gözlem/öğretmen ayrımını belirledi. HTTP alanları [OpenAI Chat Completions](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create) ve [Ollama uyumluluğu](https://docs.ollama.com/api/openai-compatibility), terminal akışı [Ink](https://github.com/vadimdemedes/ink) ile karşılaştırıldı.
