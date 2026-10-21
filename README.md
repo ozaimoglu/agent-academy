@@ -11,7 +11,7 @@
     <a href="docs/verification.md"><img src="https://img.shields.io/badge/status-MVP-E6BD75?style=flat-square&amp;labelColor=172133" alt="MVP status" /></a>
   </p>
 
-  <p><a href="#quick-start">Install</a> · <a href="docs/installation.tr.md">Kurulum ve işletim rehberi</a> · <a href="#try-it-without-an-api-key">Try the demo</a> · <a href="docs/usage.tr.md">Türkçe kullanım rehberi</a></p>
+  <p><a href="#quick-start">Install</a> · <a href="#interface-and-explanation-language">Language</a> · <a href="#panel-controls">Controls</a> · <a href="#try-it-without-an-api-key">Try the demo</a> · <a href="docs/usage.tr.md">Usage guide (TR)</a></p>
 </div>
 
 ---
@@ -28,13 +28,35 @@ It opens beside Codex in Herdr, observes the existing session, and connects the 
 
 Start Codex the way you already do. Academy reads local session records independently; it does not send instructions to the coding agent or edit your application.
 
-## One guided explanation
+## One conversation, from investigation to verification
 
-Academy has one continuous reading surface. As Codex works, it explains what we are looking at, what the evidence suggests, which code changed and why, and what the checks show. Relevant code and small evidence-backed diagrams appear inside the explanation.
+Academy follows the work in one conversation: what the agent is investigating, what a finding suggests, how the actual code changed, and what the checks establish. Explanations connect each observed action to its purpose, as a senior engineer would when working beside you. Code samples, useful small diagrams and follow-up answers appear in that same flow.
 
-Language detection runs locally on your own Codex messages. Code, logs and assistant replies do not determine the teaching language. A clear new language switches future explanations; short neutral commands such as `push` retain the earlier conversation language. No language picker or extra model request is needed. Offline narration includes English and Turkish; other languages use your configured explanation model. Existing fixed-Turkish settings migrate automatically without changing provider consent.
+Illustrative first step when you are speaking Turkish with Codex:
+
+```text
+AGENT ACADEMY                                   Following Codex
+
+  Önce projeyi tanıyalım
+
+  Ajan proje yapısını ve ilgili dosyaları tarıyor. Önce giriş
+  noktalarını, ayarları ve testleri bulup hangi parçaların
+  birbiriyle ilişkili olduğunu anlamaya çalışıyoruz.
+
+New explanations continue here.
+[D Stop] · Q close
+↑↓ scroll · Enter explain
+```
 
 New explanations continue below the previous ones. Scroll up to reread; Academy keeps your place until you return to the latest message with **End**. Press **Enter** to ask a follow-up question and read the answer in the same conversation. A Markdown debrief is saved locally when the task finishes.
+
+### Interface and explanation language
+
+**The interface is English. The explanation follows your conversation language.** Menus, controls, settings, consent notices, diagnostics and report labels stay in English. Narration, generated code explanations, concepts and diagram labels follow the language you use with Codex. A follow-up answer follows a clear language in the question you ask.
+
+Language detection runs locally on your own messages. Code, logs and assistant replies do not determine the teaching language. A clear request in a new language switches future explanations; short neutral commands such as `push` retain the earlier language. No language picker or additional model request is needed. When no language can be determined, Academy uses English.
+
+Built-in offline narration supports **English and Turkish**. Other languages and deeper code-specific teaching use your configured explanation model. Existing fixed-Turkish settings migrate automatically without changing your learning preferences or provider consent.
 
 ### Go deeper than “we moved the method”
 
@@ -93,6 +115,22 @@ herdr plugin action invoke local.agent-academy.toggle
 
 Standby performs local session discovery only: no event ingestion, source/diff collection or automatic model requests. Restarting learning skips completed work from the stopped period. An ongoing task's latest message may be retained as context; preceding investigation events are not backfilled. Existing lessons remain readable, and explicit follow-up questions can still use the configured model without enabling capture.
 
+### Panel controls
+
+| Key                        | Action                                                             |
+| -------------------------- | ------------------------------------------------------------------ |
+| **B · Start**              | Follow the current task or the next observed turn.                 |
+| **D · Stop**               | Stop observation and cancel a pending explanation.                 |
+| **Q · Close**              | Close Academy; the coding session continues.                       |
+| **↑ / ↓**, **J / K**       | Scroll within the conversation.                                    |
+| **Space**, **PgUp / PgDn** | Scroll by a page.                                                  |
+| **Home / End**             | Go to the beginning / return to the latest explanation.            |
+| **Enter**                  | Ask about the latest lesson; Enter sends, Esc cancels.             |
+| **S · Settings**           | Pause learning and open preferences and provider settings.         |
+| **C · Choose session**     | Choose a Codex session when multiple sessions need disambiguation. |
+
+If observations exist but the first lesson has not been generated, **Enter** requests that lesson. Wait for any pending explanation to finish before asking a question. Opening Settings pauses learning; press **B** after saving to resume.
+
 <details>
 <summary><strong>Version pinning, updates and removal</strong></summary>
 
@@ -139,7 +177,7 @@ The onboarding runs **inside the product**:
 
 Use arrow keys, Space, and Enter. Advanced provider settings are expandable. Press **S** later to revisit your preferences.
 
-Preferences describe how you learn, across projects and technology stacks. Relevant languages and frameworks are inferred from observed project evidence. Older Spring/TypeScript preferences migrate to fundamentals/code reading; provider credentials and consent are preserved. Saving onboarding leaves the panel in standby.
+Preferences describe how you learn, across projects and technology stacks. Relevant programming languages and frameworks are inferred from observed project evidence; the explanation language comes from your own messages. Older Spring/TypeScript preferences migrate to fundamentals/code reading; provider credentials and consent are preserved. Saving onboarding leaves the panel in standby.
 
 If Herdr provides a reliable native session identity, Academy uses it. Otherwise it matches the exact project directory. When several sessions match, press **C** to choose one.
 
@@ -174,26 +212,28 @@ npm start -- --project /absolute/path/to/project
 
 | Provider                               | Behavior                                                                                                                                                                                                             |
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Offline**                            | Local observation, structured evidence, code views, timeline diagrams, and reports. No generated framework tutorial or model Q&A.                                                                                    |
+| **Offline**                            | Immediate English/Turkish narration of observed activity, actual before/after code excerpts and local reports. Deeper causal explanations and Q&A require a model.                                                   |
 | **Ollama / local compatible endpoint** | Detailed lessons and Q&A through a loopback OpenAI-compatible HTTP endpoint. Use an actually local model; a server can still forward requests to a cloud model.                                                      |
 | **Remote compatible endpoint**         | Detailed lessons and Q&A over HTTPS, after explicit consent for the project, endpoint, and model.                                                                                                                    |
 | **Existing Codex CLI / ChatGPT quota** | Reuses the CLI's saved ChatGPT login for independent, ephemeral teaching requests. No API key. Requires project-specific consent; explanations consume the same account allowance. Codex CLI 0.163.x on Linux/macOS. |
 
 No API key is assumed. Credentials are referenced by **environment variable name**, rather than saved in the settings. Available token usage is recorded; estimates are labeled. Automatic explanations are coalesced around engineering milestones, with a default minimum interval of 60 seconds.
 
-Already use Codex with ChatGPT? Open **S → 4**, select **Codex kotası / ChatGPT girişi** with Space, then Enter. Review the project-sharing notice and press **O** to approve. The model can stay blank to use Codex's built-in default, or be set under advanced settings. Your implementation session is never resumed, forked, or sent teaching prompts. Academy starts a separate ephemeral request in an empty temporary directory with restricted read permissions, command execution, MCP, plugins, browsing, and agent delegation disabled. It does not extract or copy login tokens. Remaining allowance is checked in Codex with `/status`; the token counter in Academy records teaching usage, not remaining quota.
+Already use Codex with ChatGPT? Open **S → 4**, select **Codex quota / ChatGPT login** with **Space**, then **Enter**. Review the project-sharing notice and press **Y** to approve. Leave the model blank to use Codex's built-in default, or set it under **A · Advanced settings**. Save, return to the conversation and press **B · Start**.
+
+Teaching requests run independently of the implementation session. Academy starts a separate ephemeral request in an empty temporary directory with restricted read permissions; command execution, MCP, plugins, browsing and agent delegation are disabled. It does not extract or copy login tokens. Recorded token usage describes teaching requests; check the remaining account allowance in Codex with `/status`.
 
 **Offline mode gets you started. A configured explanation model enables the deeper teaching experience.** [Provider setup →](docs/usage.tr.md#açıklama-modeli-yapılandırma)
 
 ### Ask the questions a summary never answers
 
-- “Bunu daha temelden anlat.”
-- “Bu sınıftaki gerçek kod üzerinden açıkla.”
-- “Alternatif çözüm ne olurdu?”
-- “Bu kod production’da hangi problemleri doğurabilir?”
-- “Bu davranışı testle nasıl kanıtlarız?”
+- “Explain this from the fundamentals.”
+- “Walk me through the actual code in this class.”
+- “What alternative would fit this project?”
+- “Which production failures should we consider?”
+- “How could we verify this behavior with a focused test?”
 
-Choose a lesson and concept, ask your question, and keep the answer attached to that lesson. The implementation session continues independently.
+Press **Enter** in the conversation, type your question and press **Enter** again. The latest lesson supplies the context; the answer appears inline and is saved with that lesson. Ask in your own language—for example, “Bunu daha temelden anlat.” for a Turkish answer. The implementation session continues independently.
 
 ## Built around evidence
 
@@ -231,7 +271,7 @@ Remote source sharing requires explicit project-specific opt-in. HTTP explanatio
 
 **v0.1.0 MVP.** The application is implemented; validation scope is documented openly.
 
-- **130 automated tests** cover installation, onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. The single conversation starts explaining immediately, includes code and cited diagrams inline, retains reading position, and accepts follow-up questions without changing screens. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
+- **130 automated tests** cover installation, onboarding, language detection and migration, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports and conversation controls. Language regressions cover Turkish, English, Spanish, French, German, Chinese and Japanese, including neutral follow-ups and English code/logs inside another-language conversation. Built-in English/Turkish narration starts from the first observed action; generated explanations, code and cited diagrams continue inline. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
 - Build, lint, deterministic demo, and actual project-matching **Codex 0.163.0** command/result parsing were verified during development.
 - Ubuntu 24.04 container validation covers clean installation, build/lint/tests, SQLite, offline reports, real loopback HTTP and real PTY keyboard navigation. The production image runs as a regular user with development dependencies removed. CI covers Ubuntu with Node 22.19 and 24.
 - Herdr pane open/close actions were exercised on the installed macOS server after fixing split targeting; the launcher is tested from another project directory. Native Ubuntu desktop/Herdr integration and real-model explanation quality still need target-machine validation.
@@ -250,6 +290,7 @@ npm run check
 
 ```bash
 npm run smoke:provider       # Real loopback HTTP smoke test; no model or API key needed
+npm run smoke:terminal       # Real PTY controls and terminal restoration; offline fixtures only
 npm run smoke:codex          # Real Codex/ChatGPT request; consumes quota; sends only synthetic data
 npm start -- --doctor       # Local diagnostics
 npm run verify:install      # Verify an installation created by scripts/install.sh
@@ -258,8 +299,8 @@ npm start -- --help         # CLI options
 
 ## Documentation
 
-- [Kurulum ve işletim rehberi](docs/installation.tr.md) — prerequisites, managed deployment, pinned revisions, acceptance checks, updates, rollback, backups and removal.
-- [Türkçe kullanım rehberi](docs/usage.tr.md) — keyboard controls, provider settings, storage, troubleshooting, and limits.
+- [Installation and operations guide (Turkish)](docs/installation.tr.md) — prerequisites, managed deployment, pinned revisions, acceptance checks, updates, rollback, backups and removal.
+- [Usage guide (Turkish)](docs/usage.tr.md) — keyboard controls, provider settings, storage, troubleshooting and limits.
 - [Architecture decisions](docs/architecture.md) — integration research, boundaries, and implementation choices.
 - [Verification record](docs/verification.md) — what was exercised and what remains unverified.
 - [MIT license](LICENSE).
