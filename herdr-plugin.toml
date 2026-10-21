@@ -6,10 +6,7 @@ platforms = ["linux", "macos"]
 description = "Codex çalışmalarını yerel, kanıta dayalı mühendislik derslerine dönüştürür."
 
 [[build]]
-command = ["npm", "ci"]
-
-[[build]]
-command = ["npm", "run", "build"]
+command = ["bash", "scripts/install.sh", "--build-only"]
 
 [[panes]]
 id = "academy"
@@ -34,3 +31,15 @@ id = "toggle"
 title = "Academy: paneli aç / kapat"
 contexts = ["pane", "workspace"]
 command = ["scripts/academy.sh", "--action", "toggle"]
+
+[[actions]]
+id = "doctor"
+title = "Academy: kurulum tanısı"
+contexts = ["pane", "workspace"]
+command = ["scripts/academy.sh", "--doctor"]
+
+[[actions]]
+id = "verify"
+title = "Academy: kurulumu doğrula"
+contexts = ["pane", "workspace"]
+command = ["scripts/academy.sh", "--verify-install"]

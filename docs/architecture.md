@@ -1,6 +1,8 @@
 # Architecture decisions — verified 2026-10-21
 
 - TypeScript + React/Ink: terminal-native, no HTML assumptions. Node >=22.19 with built-in SQLite avoids native package compilation on Ubuntu 24.04. Node's SQLite experimental warning is suppressed only by the launcher.
+- Distribution uses Herdr's native managed GitHub installer and explicit refs, rather than a second global package manager. The manifest delegates to one Bash 3.2-compatible installer: preflight → locked dependencies → staged build → offline acceptance → promotion. Source checkout registration is an explicit `--link` option. A per-checkout lock prevents concurrent installs; source failures preserve or restore the preceding `dist`, while native installations use Herdr's separate installation directories. Source rollback does not restore `node_modules`.
+- Installation records source commit/dirty state, toolchain identity, lockfile/manifest hashes and emitted JavaScript hashes. Verification compares these and executes the real deterministic offline demo in temporary state, with no model calls or user project reads. This is local provenance and accidental-change detection, not a publisher signature. The launcher binds the installed absolute Node path to avoid GUI/server PATH drift; a removed Node runtime requires reinstallation. Doctor/verify are independent manifest actions. No startup hook opens the panel or begins learning.
 - Herdr installed here: 0.9.3, socket protocol 22. Manifest actions use explicit workspace/pane context and `plugin pane open --placement split --direction right --target-pane`. Split width is adjusted through `pane resize`; popup width is not a split ratio. No agent input, lifecycle override, layout replacement, commit or push API is used.
 - Codex installed here: 0.163.0. Read-only polling of existing `CODEX_HOME/sessions` JSONL is least intrusive. Live 0.163.0 records include `event_msg.item_completed` with PascalCase `CommandExecution`, `UserMessage`, and `AgentMessage`; these and legacy records are normalized. Rollout is a versioned internal compatibility surface, not a promised public observer API. Ignore reasoning/encrypted content. App Server is appropriate for sessions an application owns; do not claim it passively attaches to arbitrary CLI processes.
 - Exact canonical cwd association, optional Herdr agent_session identity, manual selection on ambiguity. Never guess the latest session when several match. One selected session per observer, persistent byte checkpoints and deduplication, bounded batches.
@@ -29,7 +31,7 @@ Primary references:
 - https://docs.ollama.com/api/openai-compatibility
 - https://github.com/vadimdemedes/ink
 
-The host is macOS; Ubuntu commands and portability are implemented, but a real Ubuntu desktop/Herdr end-to-end run must be distinguished from tests on this host. No global Herdr/Codex configuration is changed by development.
+The host is macOS; Ubuntu commands and portability are implemented, but a real Ubuntu desktop/Herdr end-to-end run must be distinguished from tests on this host. Only the user-authorized Academy plugin registration was refreshed; Codex configuration and unrelated Herdr settings were not changed.
 
 Pane resize semantics were cross-checked against https://github.com/herdrdev/herdr/blob/master/src/layout.rs (`resize_pane` / `resize_focused`): right/down increases the first-child ratio, and explicit pane resizing restores the previous focus.
 

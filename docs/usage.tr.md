@@ -6,18 +6,15 @@ Bu MVP çalışır uygulama kodunu, Herdr plugin’ini, onboarding’i, SQLite k
 
 ## Hızlı başlangıç
 
-Gereksinimler: **Node.js ≥22.19**, npm, Git ve **Herdr ≥0.9.3**. Ubuntu’nun varsayılan Node paketi eski olabilir; önce `node --version` ile kontrol edin. [Node kurulumu](https://nodejs.org/en/download).
+Standart kurulum, kaynak checkout’u gerektirmeyen **Herdr yönetilen kurulumu**dur. Gereksinimler: **Node.js ≥22.19**, **npm ≥9**, Git ve **Herdr ≥0.9.3**. [Kurulum ve işletim rehberi](installation.tr.md), önkoşulları, sürüm sabitlemeyi, kabul ölçütlerini, güncellemeyi, geri dönüşü ve kaldırmayı açıklar.
 
 ```bash
-cd /path/to/agent-academy
-./scripts/install.sh
+herdr plugin install ozaimoglu/agent-academy
+herdr plugin action invoke local.agent-academy.verify
+herdr plugin log list --plugin local.agent-academy --limit 5
 ```
 
-Script bağımlılıkları yükler ve derler. Global Herdr veya Codex ayarlarınızı değiştirmez. Plugin’i kaydetmek için şu komutu **kendiniz** çalıştırın:
-
-```bash
-herdr plugin link "$PWD"
-```
+Kurulum ortamı denetler, lockfile’dan bağımlılıkları kurar ve geçici derlemeyi çevrimdışı uçtan uca kontrol ettikten sonra kaydeder. Model/API anahtarı gerekmez. Son `verify` kaydı `succeeded` ve çıkış kodu 0 olmalıdır; `running` tamamlanma anlamına gelmez. Daha önce kaynak checkout’una bağladıysanız [geçiş adımlarını](installation.tr.md#mevcut-yerel-bağlantıyı-yönetilen-kuruluma-taşıma) uygulayın. Geliştirme kurulumu için `./scripts/install.sh --link` kullanılır.
 
 Ardından Herdr içindeki **Codex’in bulunduğu pane’den** açın:
 

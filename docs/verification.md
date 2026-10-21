@@ -6,7 +6,7 @@ Date: 2026-10-21. Host: macOS. Target: Ubuntu 24.04.
 
 - Node v22.19.0, Herdr 0.9.3 (installed schema protocol 22), Codex CLI 0.163.0.
 - `npm ci --offline`: clean lockfile installation succeeded using cached packages.
-- `npm run check`: ESLint + TypeScript strict checking, **85 passing tests across 9 files**, emitted application build.
+- `npm run check`: ESLint + TypeScript strict checking, **97 passing tests across 10 files**, emitted application build.
 - Manifest parsed with Python TOML parser; required metadata, pane placement, argv arrays and open/close/toggle entrypoints validated.
 - `node --disable-warning=ExperimentalWarning dist/cli.js --demo --headless`: full discovery → normalization → evidence/source collection → milestone classification → offline lesson → SQLite → Markdown export.
 - A real project-matching Codex 0.163.0 rollout was discovered read-only. Inspection of record _shapes_, without reading or printing reasoning content, revealed structured `event_msg.item_completed` CommandExecution records. Adapter support was added and covered by a regression test. A subsequent live read normalized 27 command/result pairs with 27 actual exit codes (counts increase as the task continues).
@@ -16,7 +16,7 @@ Date: 2026-10-21. Host: macOS. Target: Ubuntu 24.04.
 
 ## Restricted by this environment
 
-- Live `herdr pane current --current` returned `Operation not permitted` for the inherited Herdr socket. We did not link the plugin, alter global registration, manipulate the user's panes, or change Codex config. Herdr action integration is tested through a recording CLI boundary against the installed schema and published API.
+- Initial live `herdr pane current --current` returned `Operation not permitted` for the inherited Herdr socket. Direct socket inspection remains restricted. Subsequent user-authorized plugin registration and action execution succeeded through the Herdr CLI, as recorded below. No Codex configuration was changed.
 - Opening a loopback HTTP listener returned `listen EPERM 127.0.0.1`. The attempted escalation was rejected by the environment's approval policy. Default tests therefore use an in-memory Fetch transport. `npm run smoke:provider` is provided for a real local HTTP integration test in an unrestricted environment.
 - No remote model credentials were assumed and no source was sent to a remote service. No real Ollama/model inference quality evaluation was performed. Dynamic deep lessons and Q&A are implemented through the verified HTTP contract and schema/citation validation, but their educational quality depends on the configured model and deserves manual evaluation.
 - Ubuntu-specific end-to-end Herdr acceptance remains to be run on the target machine. This is a validation limit, not an assertion that the GUI/server integration was exercised here.
@@ -47,3 +47,12 @@ Primary validation rule: https://github.com/herdrdev/herdr/blob/v0.9.3/src/app/a
 ## User-controlled learning
 
 Automated integration tests verify idle discovery without source/Git/model activity, explicit start, skipping old paused work, completion boundaries within one JSONL batch, separate persisted capture reports, standby on restart, cancellation of a pending provider, rejection of late source results and stopping on a new distinct task. Adapter tests preserve a partial UTF-8 row at the initial EOF boundary and check session identity before tailing. Keyboard tests cover B/D/Q and generic onboarding; Herdr tests ensure the panel-close request targets only a pane whose workspace and executable identity match Academy. Legacy preference migration preserves provider settings. These tests do not claim a live keyboard press in the native Herdr pane was exercised.
+
+## Installation lifecycle
+
+- Official Herdr installation/build/update/uninstall behavior and the installed CLI help were rechecked. The manifest now runs one installer and exposes `doctor` / `verify` actions alongside panel controls. The manifest parses with Python's TOML parser; both shell scripts pass `bash -n`.
+- Twelve installation tests run the real Bash installer, preflight, verifier and launcher in temporary checkouts with spaces in their paths. npm/Git/Herdr are isolated executable doubles, while Node and SQLite are real. Cases include prerequisite rejection, no-write preview, successful/repeated installation, dependency/build/acceptance failures, registration rollback, artifact changes rejected before execution, concurrent lock ownership and saved Node selection with an unusable `node` on PATH. They validate installer behavior, not remote GitHub availability or the doubles' synthetic CLI content as an educational lesson.
+- `npm_config_offline=true ./scripts/install.sh --build-only` succeeded on this Mac with cached packages: 215 dependencies installed, real TypeScript output staged, actual offline demo accepted, receipt created and verified output promoted. No remote explanation request or user project observation occurred.
+- `./scripts/install.sh --check`, `./scripts/academy.sh --verify-install` and `./scripts/academy.sh --doctor` succeeded. Doctor reported the installed source revision, dirty checkout status, absolute Node executable and validation time without starting inference.
+- The existing user-authorized local Herdr link was refreshed, preserving its installation type. Invoking `local.agent-academy.verify` through the actual Herdr server produced a log with **`status: succeeded`, `exit_code: 0`**, and the offline acceptance result. The panel was not automatically opened.
+- A fresh managed GitHub install, native managed update/reinstall/rollback, and Ubuntu 24.04 acceptance were not executed here. Those lifecycle instructions follow official Herdr documentation; automated failure/rollback tests cover the source installer. Source rollback restores `dist`, not `node_modules`. The checksum receipt is not a publisher signature.

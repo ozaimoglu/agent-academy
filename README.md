@@ -11,7 +11,7 @@
     <a href="docs/verification.md"><img src="https://img.shields.io/badge/status-MVP-E6BD75?style=flat-square&amp;labelColor=172133" alt="MVP status" /></a>
   </p>
 
-  <p><a href="#quick-start">Quick start</a> · <a href="#try-it-without-an-api-key">Try the demo</a> · <a href="#what-you-can-explore">Explore the experience</a> · <a href="docs/usage.tr.md">Türkçe kullanım rehberi</a></p>
+  <p><a href="#quick-start">Install</a> · <a href="docs/installation.tr.md">Kurulum ve işletim rehberi</a> · <a href="#try-it-without-an-api-key">Try the demo</a> · <a href="docs/usage.tr.md">Türkçe kullanım rehberi</a></p>
 </div>
 
 ---
@@ -51,15 +51,35 @@ Every significant lesson uses eleven structured sections and evidence references
 
 ## Quick start
 
-**Requires Node.js ≥22.19, npm, Git, and Herdr ≥0.9.3.** The primary target is Ubuntu 24.04. The interface and teaching prompts default to Turkish.
+Use **Herdr's managed installation** for everyday use. It builds and validates a separate installation before registering the plugin. The primary target is Ubuntu 24.04; Linux and macOS are supported. The interface defaults to Turkish.
 
-Install the plugin:
+| Prerequisite | Minimum / requirement                            | Check                              |
+| ------------ | ------------------------------------------------ | ---------------------------------- |
+| Node.js      | 22.19, including built-in SQLite                 | `node --version`                   |
+| npm          | 9, with access to your approved package registry | `npm --version`                    |
+| Git          | Available on PATH                                | `git --version`                    |
+| Herdr        | 0.9.3; compatible running server                 | `herdr --version` / `herdr status` |
+| Codex        | Normal CLI session for live observation          | `codex --version`                  |
+
+**1. Install.** Run from a terminal with the prerequisites on PATH; review Herdr's source and build preview:
 
 ```bash
 herdr plugin install ozaimoglu/agent-academy
 ```
 
-From the Codex pane inside Herdr, open Academy:
+The installer checks the environment, installs locked dependencies, builds into a staging directory, and runs the offline observation → lesson → SQLite → report pipeline against synthetic data. It records the source revision, Node executable and artifact checksums. An API key is not required. No source-sharing decision is made during installation.
+
+**2. Verify.** Check registration and run the same offline acceptance checks:
+
+```bash
+herdr plugin list --plugin local.agent-academy --json
+herdr plugin action invoke local.agent-academy.verify
+herdr plugin log list --plugin local.agent-academy --limit 5
+```
+
+The plugin must be enabled and the `verify` action must finish with **`succeeded`, exit code 0**. `plugin_action_invoked` / `running` only acknowledges an asynchronous action. For diagnostics, invoke `local.agent-academy.doctor` and inspect its log.
+
+**3. Open.** From the Codex pane inside Herdr:
 
 ```bash
 herdr plugin action invoke local.agent-academy.open
@@ -77,21 +97,35 @@ herdr plugin action invoke local.agent-academy.toggle
 Standby performs local session discovery only: no event ingestion, source/diff collection or automatic model requests. Restarting learning skips completed work from the stopped period. An ongoing task's latest message may be retained as context; preceding investigation events are not backfilled. Existing lessons remain readable, and explicit **G / ASK** requests can still use the configured model without enabling capture.
 
 <details>
-<summary><strong>Install from a local checkout</strong></summary>
+<summary><strong>Version pinning, updates and removal</strong></summary>
+
+For repeatable deployments, replace the placeholder with a reviewed full commit SHA:
+
+```bash
+academy_revision="<approved-full-commit-sha>"
+herdr plugin install ozaimoglu/agent-academy --ref "$academy_revision"
+```
+
+Update a branch-tracking installation with `herdr plugin update local.agent-academy`. A SHA-pinned installation stays pinned; reinstall with the next approved SHA to upgrade, or a previous approved SHA to roll back. Close Academy panels before maintenance, verify afterward, then reopen. Codex and the Herdr server can keep running.
+
+Remove with `herdr plugin uninstall local.agent-academy`; settings and learning history are preserved. [Deployment, rollback, backups and troubleshooting →](docs/installation.tr.md)
+
+</details>
+
+<details>
+<summary><strong>Source checkout / developer installation</strong></summary>
 
 ```bash
 git clone https://github.com/ozaimoglu/agent-academy.git
 cd agent-academy
-./scripts/install.sh
-herdr plugin link "$PWD"
+./scripts/install.sh --dry-run --link
+./scripts/install.sh --link
+./scripts/install.sh --check
 ```
 
-The script installs dependencies and builds the app. `plugin link` registers the local checkout in Herdr. Then invoke the open action from your Codex pane.
+`--dry-run` previews without changing dependencies, output or registration. `--link` explicitly registers this checkout after validation; omit it to build for standalone use. `--check` checks the installation receipt and runs offline acceptance without installing dependencies. The launcher uses the recorded absolute Node path even if the Herdr server has a different PATH.
 
-```bash
-herdr plugin action invoke local.agent-academy.toggle
-herdr plugin action invoke local.agent-academy.close
-```
+Source links do not receive managed updates. If this plugin is already linked locally, follow the [explicit migration procedure](docs/installation.tr.md#mevcut-yerel-bağlantıyı-yönetilen-kuruluma-taşıma) before using managed installation. The installer never migrates or unlinks it automatically.
 
 </details>
 
@@ -200,7 +234,7 @@ Remote source sharing requires explicit project-specific opt-in. HTTP explanatio
 
 **v0.1.0 MVP.** The application is implemented; validation scope is documented openly.
 
-- **85 automated tests** cover onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. Coverage includes manual capture controls, aborts, task/report isolation, standby on restart, generic preference migration, pane-close ownership and a real subprocess boundary for the Codex provider.
+- **97 automated tests** cover installation, onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
 - Build, lint, deterministic demo, and actual project-matching **Codex 0.163.0** command/result parsing were verified during development.
 - Herdr pane open/close actions were exercised on the installed macOS server after fixing split targeting; the launcher is tested from another project directory. Direct socket inspection and real loopback HTTP tests were restricted by the development sandbox. End-to-end validation on Ubuntu and real-model explanation quality remain to be completed.
 - Codex rollout JSONL is an internal compatibility surface, so future format changes may require adapter updates. Claude Code/OpenCode adapters, semantic call graphs, browser rendering, and automatic documentation retrieval are outside this MVP.
@@ -220,12 +254,14 @@ npm run check
 npm run smoke:provider       # Real loopback HTTP smoke test; no model or API key needed
 npm run smoke:codex          # Real Codex/ChatGPT request; consumes quota; sends only synthetic data
 npm start -- --doctor       # Local diagnostics
+npm run verify:install      # Verify an installation created by scripts/install.sh
 npm start -- --help         # CLI options
 ```
 
 ## Documentation
 
-- [Türkçe kullanım rehberi](docs/usage.tr.md) — installation, keyboard controls, provider settings, storage, troubleshooting, and limits.
+- [Kurulum ve işletim rehberi](docs/installation.tr.md) — prerequisites, managed deployment, pinned revisions, acceptance checks, updates, rollback, backups and removal.
+- [Türkçe kullanım rehberi](docs/usage.tr.md) — keyboard controls, provider settings, storage, troubleshooting, and limits.
 - [Architecture decisions](docs/architecture.md) — integration research, boundaries, and implementation choices.
 - [Verification record](docs/verification.md) — what was exercised and what remains unverified.
 - [MIT license](LICENSE).

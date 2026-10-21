@@ -4,7 +4,8 @@ import { render } from 'ink';
 import { parseArgs } from 'node:util';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { academyPaths, canonical, safeText } from './core/privacy.js';
 import { loadConfig, defaultConfig, consentKey, sharesExternally } from './storage/config.js';
 import { checkCodex } from './providers/codex-cli.js';
@@ -30,6 +31,7 @@ Rapor demosu: npm start -- --demo --headless
 --headless           Bir gözlem turu çalıştır ve Markdown raporu yazdır
 --no-onboarding      Mevcut/varsayılan ayarlarla TUI aç
 --doctor             Araç ve veri erişimi tanısı
+--verify-install     Kurulum bütünlüğü ve çevrimdışı kabul kontrolü
 --help               Bu yardım
 
 Panel beklemede açılır. B başlat · D durdur · Q paneli kapat / çık
@@ -48,6 +50,7 @@ async function main() {
       demo: { type: 'boolean' },
       headless: { type: 'boolean' },
       doctor: { type: 'boolean' },
+      'verify-install': { type: 'boolean' },
       pane: { type: 'boolean' },
       action: { type: 'string' },
       'no-onboarding': { type: 'boolean' },
@@ -55,6 +58,26 @@ async function main() {
   });
   if (values.help) {
     console.log(help);
+    return;
+  }
+  if (values['verify-install']) {
+    const verifier = fileURLToPath(new URL('../scripts/verify-install.mjs', import.meta.url));
+    try {
+      const result = await promisify(execFile)(
+        process.execPath,
+        ['--disable-warning=ExperimentalWarning', verifier],
+        { timeout: 60000, maxBuffer: 2 * 1024 * 1024 },
+      );
+      console.log(result.stdout.trim());
+    } catch (error) {
+      throw new Error(
+        safeText(
+          (error as { stderr?: string }).stderr ??
+            'Kurulum doğrulanamadı. Kurulum rehberini kontrol edin.',
+          600,
+        ),
+      );
+    }
     return;
   }
   if (values.action) {
@@ -89,10 +112,22 @@ async function main() {
     const exec = promisify(execFile);
     const checks: string[] = [
       `Node: ${process.version}`,
+      `Node çalıştırıcı: ${process.execPath}`,
       `Proje: ${root}`,
       `Ayarlar: ${paths.config}`,
       `Yerel depo: ${paths.state}`,
     ];
+    try {
+      const record = JSON.parse(
+        await readFile(new URL('./install-info.json', import.meta.url), 'utf8'),
+      );
+      checks.unshift(
+        `Academy: ${record.version} · revizyon ${record.source?.commit ?? 'bilinmiyor'}${record.source?.dirty ? ' (değiştirilmiş checkout)' : ''}`,
+        `Kurulum doğrulaması: ${record.validatedAt ?? 'bilinmiyor'}`,
+      );
+    } catch {
+      checks.unshift('Academy: geliştirme derlemesi · doğrulanmış kurulum kaydı yok');
+    }
     for (const command of ['herdr', 'codex'])
       try {
         const r = await exec(command, ['--version'], { timeout: 5000 });
