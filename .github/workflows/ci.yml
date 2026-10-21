@@ -1,0 +1,46 @@
+name: Ubuntu
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.19.0', '24']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --include=dev --no-audit --no-fund
+      - run: npm run check
+      - name: Install with production host settings
+        run: ./scripts/install.sh --build-only
+        env:
+          NODE_ENV: production
+          npm_config_omit: dev
+      - run: ./scripts/install.sh --check
+      - run: ./scripts/academy.sh --verify-install
+      - run: node scripts/smoke-provider.mjs
+      - run: npm run smoke:terminal
+
+  container:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Ubuntu acceptance image
+        run: docker build --target check --tag agent-academy:check .
+      - name: Production image
+        run: docker build --tag agent-academy:ubuntu .
+      - run: docker run --rm agent-academy:ubuntu --verify-install

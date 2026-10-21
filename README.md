@@ -69,6 +69,8 @@ herdr plugin install ozaimoglu/agent-academy
 
 The installer checks the environment, installs locked dependencies, builds into a staging directory, and runs the offline observation → lesson → SQLite → report pipeline against synthetic data. It records the source revision, Node executable and artifact checksums. An API key is not required. No source-sharing decision is made during installation.
 
+**On Ubuntu 24.04:** see the [native Ubuntu setup and Docker acceptance guide](docs/ubuntu.tr.md). The Ubuntu image can run the offline demo immediately after `docker build -t agent-academy:ubuntu .` and `docker run --rm agent-academy:ubuntu`. For live Herdr/Codex integration, use the native installation above.
+
 **2. Verify.** Check registration and run the same offline acceptance checks:
 
 ```bash
@@ -234,9 +236,10 @@ Remote source sharing requires explicit project-specific opt-in. HTTP explanatio
 
 **v0.1.0 MVP.** The application is implemented; validation scope is documented openly.
 
-- **97 automated tests** cover installation, onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
+- **98 automated tests** cover installation, onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
 - Build, lint, deterministic demo, and actual project-matching **Codex 0.163.0** command/result parsing were verified during development.
-- Herdr pane open/close actions were exercised on the installed macOS server after fixing split targeting; the launcher is tested from another project directory. Direct socket inspection and real loopback HTTP tests were restricted by the development sandbox. End-to-end validation on Ubuntu and real-model explanation quality remain to be completed.
+- Ubuntu 24.04 container validation covers clean installation, build/lint/tests, SQLite, offline reports, real loopback HTTP and real PTY keyboard navigation. The production image runs as a regular user with development dependencies removed. CI covers Ubuntu with Node 22.19 and 24.
+- Herdr pane open/close actions were exercised on the installed macOS server after fixing split targeting; the launcher is tested from another project directory. Native Ubuntu desktop/Herdr integration and real-model explanation quality still need target-machine validation.
 - Codex rollout JSONL is an internal compatibility surface, so future format changes may require adapter updates. Claude Code/OpenCode adapters, semantic call graphs, browser rendering, and automatic documentation retrieval are outside this MVP.
 
 [Full verification record →](docs/verification.md)

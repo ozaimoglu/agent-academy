@@ -9,4 +9,9 @@ if [[ -f "$academy_root/dist/node-executable" ]]; then
     exit 2
   fi
 fi
+# Herdr may have started before an nvm/other user-local Node installation was added.
+# Child CLIs (including npm-installed Codex) also need that runtime on PATH.
+if [[ "$academy_node" == /* ]]; then
+  export PATH="$(dirname -- "$academy_node")${PATH:+:$PATH}"
+fi
 exec "$academy_node" --disable-warning=ExperimentalWarning "$academy_root/dist/cli.js" "$@"

@@ -2,6 +2,21 @@
 
 Date: 2026-10-21. Host: macOS. Target: Ubuntu 24.04.
 
+## Ubuntu 24.04 acceptance
+
+Executed on 2026-10-21 using Docker Desktop's Linux kernel and an **Ubuntu 24.04.5 LTS arm64** userspace, Node **v22.23.4**, npm **10.9.9**, Git **2.43.0**, running Academy as UID **10001**. This is container validation; native Ubuntu desktop/Herdr pane integration and real-model quality remain separate.
+
+- `docker build --target check --tag agent-academy:ubuntu-check .`: clean lockfile install, ESLint, strict TypeScript, **98 passing tests across 10 files**, and emitted application build.
+- The real installer succeeded with both `NODE_ENV=production` and `npm_config_omit=dev`. It explicitly includes development dependencies for the TypeScript build, then stages, validates and promotes the output.
+- `./scripts/install.sh --check` and `./scripts/academy.sh --verify-install`: real SQLite, CLI help, synthetic JSONL observation, lesson persistence and Markdown report acceptance succeeded.
+- Real loopback HTTP smoke passed inside Ubuntu, using a local fixture server with no model or credentials.
+- Real PTY smoke passed inside Ubuntu: demo opens in standby, B starts learning, all six views render, D stops, Q exits with code 0, and the alternate screen is restored. Demo files are isolated in a temporary directory.
+- `docker build --tag agent-academy:ubuntu .`, `docker run --rm agent-academy:ubuntu` and the image's `--verify-install` action succeeded. The runtime image uses Ubuntu 24.04, includes its own Node runtime, runs as the regular `academy` user, and works after TypeScript, Vitest and ESLint are removed.
+- A new subprocess regression verifies a launcher started with only `/usr/bin:/bin` on PATH makes its recorded Node available to child CLIs. The macOS suite also passed all 98 tests and the real PTY smoke.
+- `.github/workflows/ci.yml` defines Ubuntu 24.04 jobs for Node `22.19.0` and `24`, plus actual Ubuntu container acceptance and production-image validation on the hosted x64 runner. Local acceptance above was arm64; the workflow's execution status is reported separately.
+
+The following sections preserve the initial macOS verification and its historical environment restrictions.
+
 ## Executed
 
 - Node v22.19.0, Herdr 0.9.3 (installed schema protocol 22), Codex CLI 0.163.0.

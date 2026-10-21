@@ -136,6 +136,19 @@ it('promotes only verified builds, records provenance, supports repeated install
   });
   expect(launched.stdout).toContain('Agent Academy --headless');
 }, 20000);
+it('makes the recorded Node available to child CLIs with a minimal host PATH', async () => {
+  const f = await fixture();
+  await f.run();
+  await writeFile(
+    path.join(f.root, 'dist/cli.js'),
+    `import { execFileSync } from 'node:child_process';
+console.log(execFileSync('/usr/bin/env', ['node', '-p', 'process.execPath'], { encoding: 'utf8' }).trim());`,
+  );
+  const launched = await exec('/bin/bash', [path.join(f.root, 'scripts/academy.sh')], {
+    env: { ...f.env, PATH: '/usr/bin:/bin' },
+  });
+  expect(launched.stdout.trim()).toBe(process.execPath);
+});
 it.each([
   { stage: 'dependency', code: 3 },
   { stage: 'build', code: 4 },

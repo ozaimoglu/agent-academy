@@ -18,6 +18,8 @@ Standart dağıtım yöntemi **Herdr tarafından yönetilen GitHub kurulumu**dur
 
 Codex kotasıyla açıklama seçeneği ayrıca **Codex CLI 0.163.x ve ChatGPT girişi** gerektirir. Bu sınır diğer sağlayıcıların kurulumunu engellemez. API anahtarı ve proje verisi paylaşım izni kurulum önkoşulu değildir.
 
+Temiz Ubuntu kurulumu ve konteynerde kabul kontrolleri için [Ubuntu 24.04 rehberini](ubuntu.tr.md) kullanın.
+
 ## 2. Standart kurulum
 
 ```bash
@@ -27,7 +29,7 @@ herdr plugin install ozaimoglu/agent-academy
 Herdr’ün kaynak/komut önizlemesini inceleyerek kurulumu onaylayın. Varsayılan dalın o andaki revizyonu kurulur. Akış:
 
 1. Platform, Node, npm, Git, SQLite ve paket/manifest sürümleri kontrol edilir.
-2. Bağımlılıklar `npm ci --no-audit --no-fund` ile lockfile’dan kurulur.
+2. Bağımlılıklar `npm ci --include=dev --no-audit --no-fund` ile lockfile’dan kurulur; üretim ortamında da derleyici yüklenir.
 3. TypeScript uygulaması geçici dizine derlenir.
 4. SQLite, CLI ve gerçek çevrimdışı gözlem → ders → rapor hattı sınanır. Yalnızca sentetik fixture kullanılır; model/API çağrılmaz.
 5. Doğrulanan çıktı etkinleştirilir; Herdr eklentiyi kaydeder.

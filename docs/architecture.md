@@ -31,7 +31,7 @@ Primary references:
 - https://docs.ollama.com/api/openai-compatibility
 - https://github.com/vadimdemedes/ink
 
-The host is macOS; Ubuntu commands and portability are implemented, but a real Ubuntu desktop/Herdr end-to-end run must be distinguished from tests on this host. Only the user-authorized Academy plugin registration was refreshed; Codex configuration and unrelated Herdr settings were not changed.
+The development host is macOS. An Ubuntu 24.04 Docker image runs the real installer, test suite, SQLite/report pipeline, loopback HTTP and PTY smoke checks as a regular user. GitHub Actions covers Ubuntu with Node 22.19 and 24. Native Ubuntu desktop/Herdr end-to-end acceptance remains separate. Only the user-authorized Academy plugin registration was refreshed during initial development; Codex configuration and unrelated Herdr settings were not changed.
 
 Pane resize semantics were cross-checked against https://github.com/herdrdev/herdr/blob/master/src/layout.rs (`resize_pane` / `resize_focused`): right/down increases the first-child ratio, and explicit pane resizing restores the previous focus.
 

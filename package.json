@@ -20,6 +20,7 @@
     "check": "npm run lint && npm test && npm run build",
     "verify:install": "node --disable-warning=ExperimentalWarning scripts/verify-install.mjs",
     "smoke:provider": "npm run build && node scripts/smoke-provider.mjs",
+    "smoke:terminal": "python3 scripts/smoke-terminal.py",
     "smoke:codex": "npm run build && node scripts/smoke-codex.mjs"
   },
   "dependencies": {

@@ -82,7 +82,7 @@ fi
 
 if [[ "$academy_dry_run" == 1 ]]; then
   printf '\n%s\n' 'PLAN · hiçbir bağımlılık, derleme çıktısı veya Herdr kaydı değiştirilmedi.'
-  printf '%s\n' '  2. npm ci --no-audit --no-fund' '  3. Geçici dizine TypeScript derlemesi' '  4. SQLite + CLI + çevrimdışı uçtan uca doğrulama ve kurulum kaydı' '  5. Doğrulanan dist çıktısını etkinleştir'
+  printf '%s\n' '  2. npm ci --include=dev --no-audit --no-fund' '  3. Geçici dizine TypeScript derlemesi' '  4. SQLite + CLI + çevrimdışı uçtan uca doğrulama ve kurulum kaydı' '  5. Doğrulanan dist çıktısını etkinleştir'
   if [[ "$academy_link" == 1 ]]; then printf '  6. herdr plugin link %q\n' "$academy_root"; fi
   exit 0
 fi
@@ -97,7 +97,8 @@ academy_lock_owned=1
 printf '%s\n' "$$" > "$academy_root/.academy-install.lock/pid"
 academy_stage="$(mktemp -d "$academy_root/.academy-install.XXXXXX")" || fail 4 'Kurulum dizinine yazılamıyor.'
 step '2/5' 'Kilit dosyasından bağımlılık kurulumu'
-npm ci --no-audit --no-fund || fail 3 'Bağımlılıklar yüklenemedi. Ağ/registry erişimini ve npm çıktısını kontrol edin.'
+# TypeScript is needed at install time even when the host sets NODE_ENV=production.
+npm ci --include=dev --no-audit --no-fund || fail 3 'Bağımlılıklar yüklenemedi. Ağ/registry erişimini ve npm çıktısını kontrol edin.'
 step '3/5' 'Yalıtılmış uygulama derlemesi'
 npm run build -- --outDir "$academy_stage/dist" --sourceMap false --declaration false || fail 4 'Derleme başarısız; önceki dist çıktısı korundu.'
 cp -R -- fixtures "$academy_stage/fixtures" || fail 4 'Kabul testi fixture dosyaları hazırlanamadı.'
