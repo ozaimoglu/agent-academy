@@ -58,7 +58,7 @@ Bu imaj Herdr sunucusu veya Codex içermez. Ana makinenin oturumları ve ayarlar
 docker build --target check --tag agent-academy:ubuntu-check .
 ```
 
-Bu hedef Ubuntu 24.04 üzerinde temiz bağımlılık kurulumu, lint, TypeScript, tüm testler, üretim ortamı ayarlarıyla gerçek installer, kurulum bütünlüğü, gerçek loopback HTTP ve gerçek PTY kontrollerini çalıştırır. PTY kontrolü demo panelini açar, B ile öğrenmeyi başlatır, altı görünümü dolaşır, D/Q kısayollarını ve terminalin geri yüklenmesini doğrular. Model isteği yapılmaz.
+Bu hedef Ubuntu 24.04 üzerinde temiz bağımlılık kurulumu, lint, TypeScript, tüm testler, üretim ortamı ayarlarıyla gerçek installer, kurulum bütünlüğü, gerçek loopback HTTP ve gerçek PTY kontrollerini çalıştırır. PTY kontrolü demo panelini açar, B ile öğrenmeyi başlatır, tek anlatımdaki geçmişe kaydırmayı ve en yeni açıklamaya dönüşü, D/Q kısayollarını ve terminalin geri yüklenmesini doğrular. Model isteği yapılmaz.
 
 Doğrudan checkout’ta aynı ek kontroller için:
 

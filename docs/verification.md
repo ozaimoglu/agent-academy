@@ -2,6 +2,15 @@
 
 Date: 2026-10-21. Host: macOS. Target: Ubuntu 24.04.
 
+## One continuous teaching conversation
+
+- Replaced the six content views with one chronological conversation. Actual code comparisons and useful cited diagrams appear alongside the explanation. Follow-up questions and answers use the same surface. The structured lesson and automatic Markdown export remain available to the backend.
+- `npm run check`: **113 tests across 11 files**, lint, strict TypeScript and build passed on macOS. The updated real PTY smoke covers the single conversation, Home/End history navigation, stopping, quitting and alternate-screen restoration.
+- Component tests verify removed tab keys do not change views, current code stays inside the explanation, scrolling into history preserves the reading position as new activity arrives, End resumes following, and Enter submits a question whose answer appears in the conversation.
+- Narrative tests retain earlier explanations and associated questions, exclude another capture's history, render cited diagrams inline within a narrow pane, reject unsupported edges, and remove terminal control sequences from diagram labels. No unrelated timeline is rendered as an architecture diagram.
+
+The sections below record the earlier interface and its validation history.
+
 ## Conversational LIVE walkthrough
 
 - `npm run check`: **109 tests across 11 files**, lint, strict TypeScript and build passed on macOS. `npm run smoke:terminal` passed with the updated LIVE screen.

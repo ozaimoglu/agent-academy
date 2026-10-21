@@ -13,7 +13,7 @@ function box(label: string, width: number): string[] {
     '└' + '─'.repeat(width - 2) + '┘',
   ];
 }
-export function renderDiagram(edges: DiagramEdge[], width: number): string {
+export function renderDiagram(edges: DiagramEdge[], width: number, showEvidence = true): string {
   if (!edges.length)
     return 'Henüz kanıta bağlı bir ilişki yok. Yeni gözlemler geldikçe akış oluşacak.';
   const w = Math.max(12, Math.min(width, 72));
@@ -22,12 +22,12 @@ export function renderDiagram(edges: DiagramEdge[], width: number): string {
       [
         ...box(edge.from, w),
         '    │',
-        ...wrapAnsi(edge.label, w - 7, { hard: true })
+        ...wrapAnsi(safeText(edge.label, 180), w - 7, { hard: true })
           .split('\n')
           .map((l) => '    │ ' + l),
         '    ▼',
         ...box(edge.to, w),
-        `Kanıt: ${edge.evidence.join(', ')}`,
+        ...(showEvidence ? [`Kanıt: ${edge.evidence.join(', ')}`] : []),
       ].join('\n'),
     )
     .join('\n\n');

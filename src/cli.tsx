@@ -35,9 +35,8 @@ Rapor demosu: npm start -- --demo --headless
 --help               Bu yardım
 
 Panel beklemede açılır. B başlat · D durdur · Q paneli kapat / çık
-TUI: 1–6 sekme · S ayarlar · C oturum · G açıkla · E dışa aktar · Z geniş
-WHY: ,/. bölüm · Enter içindekiler · [/] ders
-ASK: A yaz · P öneri · K kavram · Enter sor`;
+Tek anlatım akışı: ↑↓ / Space kaydır · End en yeni açıklamaya dön
+Enter soru sor · S ayarlar · gerekirse C ile oturum seç`;
 async function main() {
   const { values } = parseArgs({
     options: {

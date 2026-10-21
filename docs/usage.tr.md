@@ -26,7 +26,7 @@ Sağda varsayılan %38 genişliğinde kalıcı bir terminal pane’i açılır. 
 
 **Panel açılınca veya onboarding kaydedilince otomatik öğrenme başlamaz.** Sağdaki Academy pane’ine odaklanıp **B Başlat** ile seçtiğiniz görev için öğrenmeyi açın. **D Durdur**, yeni olay/kaynak/Git toplamayı durdurur ve devam eden model isteğini iptal eder. Codex turu bitince son rapor hazırlanır, sonra Academy yeniden bekler. Yeni bir görev için tekrar B gerekir. Tamamlanma işareti olmadan farklı bir kullanıcı görevi görülürse de beklemeye geçer.
 
-Beklemede yalnızca yerel oturum keşfi yapılır; otomatik model isteği veya kota tüketimi yoktur. Durdurulmuş aralıktaki tamamlanmış işler sonraki Başlat’ta işlenmez. Devam eden görevin son görev mesajı bağlam olarak alınabilir; önceki inceleme olayları geriye dönük toplanmaz. Her öğrenme aralığının raporu ayrı tutulur. Önceki dersleri okumak ücretsizdir; **G** veya **ASK** ile özellikle gönderdiğiniz istekler model kullanabilir. İptal, sağlayıcının zaten işlediği tokenları geri almaz.
+Beklemede yalnızca yerel oturum keşfi yapılır; otomatik model isteği veya kota tüketimi yoktur. Durdurulmuş aralıktaki tamamlanmış işler sonraki Başlat’ta işlenmez. Devam eden görevin son görev mesajı bağlam olarak alınabilir; önceki inceleme olayları geriye dönük toplanmaz. Her öğrenme aralığının raporu ayrı tutulur. Önceki dersleri okumak ücretsizdir; **Enter** ile yazıp gönderdiğiniz sorular model kullanabilir. İptal, sağlayıcının zaten işlediği tokenları geri almaz.
 
 Panelde **Q**, yalnızca kimliği doğrulanan Academy pane’ini kapatır. Codex pane’i açık kalır. Aynı işlemleri Herdr eylemleriyle yapabilirsiniz:
 
@@ -63,39 +63,28 @@ npm start -- --project /absolute/path/to/project
 
 Yalnızca seçili projenin kanonik cwd’siyle eşleşen oturumlar kabul edilir. Codex’i bir alt dizinde çalıştırdıysanız aynı alt dizini seçin. Herdr eylemi hedef pane’in gerçek foreground cwd’sini kullanır.
 
-## LIVE: Yanında oturan kıdemli mühendis gibi
+## Tek anlatım: Yanında oturan kıdemli mühendis gibi
 
-LIVE ilk gözlemden itibaren neyi incelediğimizi ve bunun ne işe yaradığını sade Türkçeyle anlatır. Model yanıtı beklerken de ekran boş kalmaz: dosya arama, kod okuma, değişiklik ve kontrol sonuçları hemen açıklanır. Hash, SOURCE/DIFF etiketi ve ders sayacı bu akışta gösterilmez. Gerçek yama CODE, ayrıntılı açıklamalar ve kanıtlar WHY içindedir.
+Panelde tek bir sohbet akışı vardır. Codex ilerledikçe **neye bakıyoruz → bulgu veya olası neden → önce/sonra kodu ve beklenen etkisi → gözlenen kontrol sonucu** anlatılır. İlk gözlem hemen açıklanır; model yanıtı hazırlanırken ekran boş kalmaz. Kod örnekleri ve anlamayı kolaylaştıran küçük şemalar aynı açıklamanın içindedir. Şemalar yalnızca verilen kanıtlara bağlı ilişkileri gösterir.
 
-Açıklama modeli seçiliyse aynı ders isteği ayrıca LIVE için kısa bir anlatım üretir: **neye bakıyoruz → bulgu veya olası neden → önce/sonra kodu ve beklenen etkisi → gözlenen kontrol sonucu**. Bu açıklamalar verilen kanıtlara bağlanır. Çevrimdışı mod gözlenen adımları ve gerçek kod farklarını özetler; koda özel yeni bir neden-sonuç iddiası üretmez. B ile başlatıldığında devam eden görevin hedefi hemen açıklama bağlamına alınır. Yalnızca Git değişikliği gözlense bile otomatik analiz açıksa açıklama hazırlanır; değişmeyen kod için tekrar tekrar istek yapılmaz.
+Yeni açıklamalar alta eklenir. Yukarı kaydırıp önceki bir bölümü okurken yeni mesajlar seni aşağı atmaz. **End** en yeni açıklamaya döner ve otomatik takibi sürdürür. **Enter** ile sorunu yazıp gönder; yanıt aynı sohbetin içinde görünür. İlk açıklama gelmeden veya model devam eden açıklamayı bitirmeden soru alanı açılmaz.
+
+Çevrimdışı mod gözlenen adımları ve gerçek kod farklarını özetler. Koda özel neden-sonuç açıklamaları için bir açıklama modeli seçilir. B ile başlatıldığında devam eden görevin hedefi hemen bağlama alınır. Yalnızca Git değişikliği gözlense bile otomatik analiz açıksa açıklama hazırlanır; değişmeyen kod için tekrar tekrar istek yapılmaz.
 
 ## Terminal kullanımı
 
-| Tuş                | İşlem                                               |
-| ------------------ | --------------------------------------------------- |
-| `1`–`6`, Tab, ←/→  | LIVE, WHY, CODE, VISUALIZE, ASK, REPORT             |
-| ↑/↓ veya J/K       | Kaydır                                              |
-| Space, PgDn / PgUp | Sayfa kaydır                                        |
-| B                  | Seçili görev için öğrenmeyi başlat                  |
-| D                  | Gözlemi durdur, devam eden model isteğini iptal et  |
-| S                  | Ayarlar / onboarding’i yeniden çalıştır             |
-| C                  | Aynı projedeki Codex oturumunu elle seç             |
-| G                  | Güncel kanıtlardan açıklama iste                    |
-| E                  | Markdown raporunu Academy state dizinine aktar      |
-| Z                  | Academy pane’ini Herdr zoom ile genişlet / geri dön |
-| Q                  | Academy pane’ini kapat; bağımsız TUI’den çık        |
-| Ctrl+C             | Academy uygulamasından çık                          |
-| `[` / `]`          | Önceki / sonraki ders                               |
-| WHY: `,` / `.`     | Önceki / sonraki ders bölümü                        |
-| WHY: Enter         | İçindekiler / odaklı okuma                          |
-| CODE: N            | Sonraki diff / kaynak parçası                       |
-| ASK: A             | Kendi sorunu yaz; Enter gönder, Esc iptal           |
-| ASK: P / K         | Hazır soruyu / seçili kavramı değiştir              |
-| ASK: Enter         | Seçili hazır soruyu sor                             |
+| Tuş | İşlem |
+| --- | --- |
+| B | Seçili görev için öğrenmeyi başlat |
+| D | Gözlemi durdur, devam eden açıklamayı iptal et |
+| Q | Academy panelini kapat |
+| ↑/↓, Space, PgUp/PgDn | Aynı sohbet içinde kaydır |
+| Home / End | Başlangıca / en yeni açıklamaya dön |
+| Enter | Sorunu yaz; tekrar Enter ile gönder, Esc ile vazgeç |
+| S | Öğrenme ve model ayarlarını aç |
+| C | Yalnızca oturum belirsizse izlenecek Codex oturumunu seç |
 
-Ayarlar ekranında `1`–`4` ilgili tercihe gider. Çoklu seçimde Space kullanın. AI ekranında Space sağlayıcıyı seçer, A gelişmiş ayarları açar. Alan üzerinde Enter düzenler. Genişlik, sıklık, bağlam ve çıktı bütçeleri düzenlenebilir. Panel genişliği bir sonraki açılışta uygulanır.
-
-WHY uzun metni tek ekrana sıkıştırmaz. Bölümler ayrı okunur, içindekiler açılıp kapanır. CODE gerçek yama, HEAD farkı ve satır numaralı kaynak görüntüler. VISUALIZE kanıtlı model ilişkilerini veya gözlenen olay sırasını Unicode kutularla gösterir. Sıra diyagramı mimari nedensellik iddiası değildir. ASK geçmişi seçili derse bağlı kalır. Görünümler en az 24 sütun × 12 satır ister; 38 sütunlu pane için dar düzen vardır. Daha derin okuma için Z kullanın.
+Ayarlar ekranında `1`–`4` ilgili tercihe gider. Çoklu seçimde Space kullanın. AI ekranında Space sağlayıcıyı seçer, A gelişmiş ayarları açar. Alan üzerinde Enter düzenler. Panel genişliği bir sonraki açılışta uygulanır. Anlatım en az 24 sütun × 12 satır ister; dar panellerde metin ve şemalar genişliğe uyarlanır.
 
 ## Açıklama modeli yapılandırma
 
@@ -203,9 +192,9 @@ Kendi Ubuntu ortamınızda link işleminden sonra:
 1. Codex’i her zamanki gibi başlatın ve yeni bir görev verin.
 2. Academy open eylemini çağırın; sağ pane’in yaklaşık %38 olduğunu kontrol edin.
 3. Onboarding’i tamamlayın, gerekirse C ile oturumu seçin.
-4. Panelin beklemede olduğunu ve model isteği yapmadığını doğrulayın; B ile başlatıp Codex komut/test çalıştırırken LIVE kayıtlarını izleyin.
-5. Yerel model ayarlayın; G, WHY ve ASK ile kanıta bağlı yanıtları inceleyin.
-6. D ile durdurup yeni olayların işlenmediğini kontrol edin. B ile yeniden seçtiğiniz işi izleyin. Tur bitince REPORT / E ile raporu ve bekleme durumunu kontrol edin.
+4. Panelin beklemede olduğunu ve model isteği yapmadığını doğrulayın; B ile başlatıp Codex çalışırken tek akıştaki açıklamaları izleyin.
+5. Model ayarlayın; aynı açıklamadaki kodu ve gerekirse şemayı okuyun. Enter ile bir soru sorun.
+6. D ile durdurup yeni olayların işlenmediğini kontrol edin. B ile yeniden seçtiğiniz işi izleyin. Tur bitince otomatik kaydedilen Markdown raporunu ve bekleme durumunu kontrol edin.
 7. Toggle/close çağırın; Codex’in çalışmaya devam ettiğini doğrulayın.
 8. İkinci workspace’te farklı proje başlatın; oturumların karışmadığını kontrol edin.
 
@@ -215,13 +204,13 @@ Kendi Ubuntu ortamınızda link işleminden sonra:
 
 **Pane açılmıyor**: `npm run build`, `herdr --version`, `herdr plugin action list --plugin local.agent-academy` ve `herdr plugin log list --plugin local.agent-academy` kontrol edin. Eylemi Herdr içindeki hedef Codex pane’inden çalıştırın. Herdr 0.9.3’ten eski sürümde plugin çalışmaz. Popup width alanları split yüzdesi değildir; gerçek resize API’si kullanılır.
 
-**“Model kullanılamadı”**: Ayarlar → 4 → A içinde tam model adını, `/v1` adresini, key ortam değişkenini ve token alanını kontrol edin. 401/403 yetki, bağlantı hatası sunucu erişimi, geçersiz JSON ise modelin ders şemasını tamamlayamadığı anlamına gelebilir. Kesilmede çıktı bütçesini artırın. Otomatik deneme yağmuru yapılmaz; aralığı bekleyin veya G kullanın. Model 120 saniye içinde yanıt vermelidir. Model API hata gövdesi sır sızdırmamak için ekrana basılmaz.
+**“Model kullanılamadı”**: Ayarlar → 4 → A içinde tam model adını, `/v1` adresini, key ortam değişkenini ve token alanını kontrol edin. 401/403 yetki, bağlantı hatası sunucu erişimi, geçersiz JSON ise modelin ders şemasını tamamlayamadığı anlamına gelebilir. Kesilmede çıktı bütçesini artırın. Otomatik deneme yağmuru yapılmaz; bir sonraki açıklama aralığını bekleyin. Model 120 saniye içinde yanıt vermelidir. Model API hata gövdesi sır sızdırmamak için ekrana basılmaz.
 
-**Dar görünüm**: Z ile pane’i yakınlaştırın. WHY için bölüm seçimini, Space/PgDn ile sayfa kaydırmayı kullanın. Terminalde HTML veya keyfi resim render edilmez. Görüntü protokolü ve browser viewer bu MVP’de yoktur.
+**Dar görünüm**: Terminal pane’ini büyütün veya aynı akışta Space/PgDn ile kaydırın. End en yeni açıklamaya döner. Terminalde HTML veya keyfi resim render edilmez. Görüntü protokolü ve browser viewer bu MVP’de yoktur.
 
 **Biçim değişti / komut görünmüyor**: JSONL iç protokolü değişebilir. Tanınmayan araçlar çalıştırılmaz ve bilinmeyen araç çıktıları shell sonucu sayılmaz. Shell komutu içinde yapılan bütün dosya değişikliklerini veya tüm test araçlarının semantiğini eksiksiz tanımak garanti edilmez. Git anlık görüntüsü bu boşluğu kısmen doldurur. Kod commit edilmeden önce gözlenmemiş ve HEAD ilerlemişse tam önce/sonra yeniden oluşturulamaz.
 
-**Rapor ve bellek sınırı**: Rapor son 3.000 olay + ilk görev, son 200 ders ve ders başına son 10 Q&A üzerinden oluşturulur; toplam Markdown 2 MiB ile sınırlıdır. UI son 100 dersi ve seçili dersin son 100 Q&A’sını açar; daha eski veriler SQLite’ta kalır. Uzun oturumlarda kapsam raporda belirtilir. SQLite/rapor, kaynak deponuzun dışında tutulmalıdır; kullanıcı `--state-dir` ile açıkça depo içini seçerse bu sınırı kendisi değiştirir.
+**Rapor ve bellek sınırı**: Rapor son 3.000 olay + ilk görev, son 200 ders ve ders başına son 10 Q&A üzerinden oluşturulur; toplam Markdown 2 MiB ile sınırlıdır. UI mevcut öğrenme aralığındaki son 100 dersin anlatımını ve bu derslere bağlı soru-cevapları gösterir; daha eski veriler SQLite’ta kalır. Uzun oturumlarda kapsam raporda belirtilir. SQLite/rapor, kaynak deponuzun dışında tutulmalıdır; kullanıcı `--state-dir` ile açıkça depo içini seçerse bu sınırı kendisi değiştirir.
 
 **Henüz kapsamda olmayanlar**: Claude Code/OpenCode somut adaptörleri (arayüz hazır), otomatik resmi teknik doküman getirme, tam semantik çağrı grafiği, bağımsız kod/test doğrulayıcısı, resim protokolleri, browser viewer ve tam metin geçmiş arama. Offline mod öğretici bir kanıt iskeleti sağlar; model olmadan ayrıntılı framework dersi uydurmaz.
 

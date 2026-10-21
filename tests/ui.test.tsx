@@ -173,7 +173,7 @@ it('fits all onboarding screens and advanced fields in a narrow pane', async () 
   await pause();
   expect((ui.lastFrame() ?? '').split('\n').length).toBeLessThanOrEqual(24);
 });
-it('browses every live TUI view from the deterministic observation and teaching pipeline', async () => {
+it('keeps one narrative surface throughout the deterministic teaching pipeline', async () => {
   const { AcademyTUI } = await import('../src/ui/app.js');
   const { Academy } = await import('../src/core/academy.js');
   const { LessonStore } = await import('../src/storage/store.js');
@@ -203,17 +203,14 @@ it('browses every live TUI view from the deterministic observation and teaching 
     await vi.waitFor(() => expect(academy.snapshot.lessons.length).toBe(1));
     await pause();
     expect(ui.lastFrame()).toContain('Tur tamamlandı');
-    for (const [key, expected] of [
-      ['2', 'Ne oldu?'],
-      ['3', 'Gerçek kod'],
-      ['4', 'Kanıta bağlı akış'],
-      ['5', 'Birlikte derinleşelim'],
-      ['6', 'Mühendislik değerlendirmesi'],
-    ]) {
-      ui.stdin.write(key!);
+    const frame = ui.lastFrame();
+    for (const key of ['1', '2', '3', '4', '5', '6', '\t', '\x1b[C']) {
+      ui.stdin.write(key);
       await pause();
-      expect(ui.lastFrame()).toContain(expected);
+      expect(ui.lastFrame()).toBe(frame);
     }
+    for (const tab of ['LIVE', 'WHY', 'CODE', 'VISUALIZE', 'ASK', 'REPORT'])
+      expect(ui.lastFrame()).not.toContain(tab);
     ui.stdin.write('s');
     await pause();
     expect(ui.lastFrame()).toContain('Ne kadar derin');
@@ -263,7 +260,7 @@ it('offers keyboard Start, Stop and panel Close without starting automatically',
     store.close();
   }
 });
-it('shows a readable first explanation in LIVE while preserving the full diff in CODE', async () => {
+it('keeps the actual code comparison inside the single narration', async () => {
   const { AcademyTUI } = await import('../src/ui/app.js');
   const { Academy } = await import('../src/core/academy.js');
   const { LessonStore } = await import('../src/storage/store.js');
@@ -280,6 +277,7 @@ it('shows a readable first explanation in LIVE while preserving the full diff in
     .mockImplementation(async (session) => ({ session, events: [diff] }));
   const config = defaultConfig();
   config.onboarded = true;
+  config.provider.autoAnalyze = false;
   const store = new LessonStore(path.join(d, 'state'));
   const academy = new Academy(root, sessions, path.join(d, 'state'), config, store, {});
   const ui = render(
@@ -288,21 +286,123 @@ it('shows a readable first explanation in LIVE while preserving the full diff in
   try {
     await pause();
     ui.stdin.write('b');
+    await vi.waitFor(() => expect(ui.lastFrame()).toContain('--include=dev'));
+    expect(academy.snapshot.lessons).toHaveLength(0);
+    ui.stdin.write('\r');
     await vi.waitFor(() => expect(academy.snapshot.lessons).toHaveLength(1));
     await pause();
-    expect(ui.lastFrame()).toContain('Şu an ne oluyor?');
-    expect(ui.lastFrame()).toContain('Kodda ne değişti?');
+    expect(ui.lastFrame()).toContain('npm ci --include=dev');
     expect(ui.lastFrame()).not.toContain('0 ders');
     expect(ui.lastFrame()).not.toContain(diff.id);
     expect(ui.lastFrame()).not.toContain('diff --git');
     ui.stdin.write('3');
     await pause();
-    expect(ui.lastFrame()).toContain('diff --git');
+    expect(ui.lastFrame()).not.toContain('diff --git');
     expect(ui.lastFrame()).toContain('--include=dev');
   } finally {
     ui.unmount();
     await academy.stop();
     store.close();
     git.mockRestore();
+  }
+});
+it('keeps a reader in history as new activity arrives and resumes following with End', async () => {
+  const { AcademyTUI } = await import('../src/ui/app.js');
+  const { Academy } = await import('../src/core/academy.js');
+  const { LessonStore } = await import('../src/storage/store.js');
+  const { d, root, sessions } = await workspace();
+  const config = defaultConfig();
+  config.onboarded = true;
+  const store = new LessonStore(path.join(d, 'state'));
+  const academy = new Academy(root, sessions, path.join(d, 'state'), config, store, {});
+  const watch = vi.spyOn(academy, 'watch').mockImplementation(() => {});
+  academy.snapshot.learning = 'active';
+  academy.snapshot.events = [
+    event('task', 'Başlangıç hedefi'),
+    ...Array.from({ length: 8 }, (_, i) =>
+      event('message', `Adım ${i}: ` + 'Bu bağlantıyı birlikte açıklıyoruz. '.repeat(15), {
+        id: `step-${i}`,
+      }),
+    ),
+  ];
+  const ui = render(
+    <AcademyTUI academy={academy} configDir={path.join(d, 'config')} initialConfig={config} />,
+  );
+  try {
+    await pause();
+    ui.stdin.write('\x1b[H');
+    await pause();
+    expect(ui.lastFrame()).toContain('Başlangıç hedefi');
+    academy.snapshot.events.push(event('message', 'NEW_LAST_STEP: Şimdi yeni bir bulgu geldi.'));
+    academy.emit('change', academy.snapshot);
+    await pause();
+    expect(ui.lastFrame()).toContain('Başlangıç hedefi');
+    expect(ui.lastFrame()).not.toContain('NEW_LAST_STEP');
+    ui.stdin.write('\x1b[F');
+    await pause();
+    expect(ui.lastFrame()).toContain('NEW_LAST_STEP');
+    expect(ui.lastFrame()).toContain('Yeni açıklamalar burada devam eder.');
+  } finally {
+    ui.unmount();
+    await academy.stop();
+    store.close();
+    watch.mockRestore();
+  }
+});
+it('accepts a question and displays its answer in the same narrative', async () => {
+  const { AcademyTUI } = await import('../src/ui/app.js');
+  const { Academy } = await import('../src/core/academy.js');
+  const { LessonStore } = await import('../src/storage/store.js');
+  const { offlineLesson } = await import('../src/core/teaching.js');
+  const { d, root, sessions } = await workspace();
+  const config = defaultConfig();
+  config.onboarded = true;
+  const store = new LessonStore(path.join(d, 'state'));
+  const academy = new Academy(root, sessions, path.join(d, 'state'), config, store, {});
+  const watch = vi.spyOn(academy, 'watch').mockImplementation(() => {});
+  const source = event('source', 'const value = 1;', { file: 'example.ts' });
+  const lesson = offlineLesson('one', 'INVESTIGATING', [source]);
+  academy.snapshot.lessons = [lesson];
+  academy.snapshot.events = [source];
+  const ask = vi.spyOn(academy, 'ask').mockImplementation(async (l, text) => {
+    const q = {
+      id: 'answer',
+      lessonId: l.id,
+      question: text,
+      created: new Date().toISOString(),
+      answer: [
+        {
+          heading: 'Açıklama',
+          body: 'Çünkü burada değer yeniden atanıyor.',
+          evidence: [source.id],
+          confidence: 'Strongly supported' as const,
+        },
+      ],
+    };
+    store.question(q);
+    return q;
+  });
+  const ui = render(
+    <AcademyTUI academy={academy} configDir={path.join(d, 'config')} initialConfig={config} />,
+  );
+  try {
+    await pause();
+    ui.stdin.write('\r');
+    await pause();
+    expect(ui.lastFrame()).toContain('Sorunu yaz');
+    ui.stdin.write('Neden böyle?');
+    await pause();
+    ui.stdin.write('\r');
+    await vi.waitFor(() => expect(ask).toHaveBeenCalledWith(lesson, 'Neden böyle?'));
+    await pause();
+    expect(ui.lastFrame()).toContain('Senin sorun');
+    expect(ui.lastFrame()).toContain('Çünkü burada değer yeniden atanıyor.');
+    expect(ui.lastFrame()).not.toContain('ASK');
+  } finally {
+    ui.unmount();
+    await academy.stop();
+    store.close();
+    watch.mockRestore();
+    ask.mockRestore();
   }
 });

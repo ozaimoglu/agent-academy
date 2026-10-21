@@ -62,11 +62,12 @@ def main():
             wait_for("AGENT ACADEMY")
             wait_for("BEKLEMEDE")
             key("b", "Tur tamamlandı")
-            key("2", "Ne oldu?")
-            key("3", "Gerçek kod")
-            key("4", "Kanıta bağlı akış")
-            key("5", "Birlikte derinleşelim")
-            key("6", "Mühendislik değerlendirmesi")
+            key("\x1b[H", "Birlikte ele aldığımız iş")
+            key("\x1b[F", "Tur tamamlandı")
+            plain = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", output.decode("utf-8", "replace"))
+            for tab in ["1 LIVE", "2 WHY", "3 CODE", "4 VISUALIZE", "5 ASK", "6 REPORT"]:
+                if tab in plain:
+                    raise RuntimeError("Removed navigation is still visible: " + tab)
             key("d", "Durduruldu.")
             os.write(terminal, b"q")
             deadline = time.monotonic() + 10
@@ -88,7 +89,7 @@ def main():
                         raise RuntimeError("TUI exited unsuccessfully")
                     if b"\x1b[?1049h" not in output or b"\x1b[?1049l" not in output:
                         raise RuntimeError("TUI did not restore the alternate screen")
-                    print("PASS: real PTY start / six views / stop / quit / terminal restoration")
+                    print("PASS: real PTY single story / history / stop / quit / terminal restoration")
                     return
                 if select.select([terminal], [], [], 0.1)[0]:
                     try:

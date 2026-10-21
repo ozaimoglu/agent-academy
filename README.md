@@ -28,18 +28,11 @@ It opens beside Codex in Herdr, observes the existing session, and connects the 
 
 Start Codex the way you already do. Academy reads local session records independently; it does not send instructions to the coding agent or edit your application.
 
-## What you can explore
+## One guided explanation
 
-Six focused views, with scrolling, lesson navigation, and a wider reading mode:
+Academy has one continuous reading surface. As Codex works, it explains what we are looking at, what the evidence suggests, which code changed and why, and what the checks show. Relevant code and small evidence-backed diagrams appear inside the explanation.
 
-| View          | What you learn                                                                                                    |
-| ------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **LIVE**      | A plain-language walkthrough from the first step: what we are inspecting, what changed, why it matters, and what the checks show. |
-| **WHY**       | The problem, suspected cause, underlying mechanism, design decisions, alternatives, and trade-offs.               |
-| **CODE**      | Observed patches, Git HEAD → worktree differences, and relevant source excerpts with line numbers.                |
-| **VISUALIZE** | Terminal-native diagrams derived from cited relationships or the observed event timeline.                         |
-| **ASK**       | Follow-up explanations grounded in the selected lesson and its actual evidence.                                   |
-| **REPORT**    | A local Markdown engineering debrief covering the task, investigation, changes, tests, and remaining uncertainty. |
+New explanations continue below the previous ones. Scroll up to reread; Academy keeps your place until you return to the latest message with **End**. Press **Enter** to ask a follow-up question and read the answer in the same conversation. A Markdown debrief is saved locally when the task finishes.
 
 ### Go deeper than “we moved the method”
 
@@ -47,7 +40,7 @@ Suppose Codex investigates a Spring `@Transactional` self-invocation bug. A usef
 
 That is the teaching engine's brief. With an explanation model configured, deep mode asks for the mechanisms, real code, alternatives, edge cases, and verification strategy. It has no fixed paragraph limit; context, output budget, and analysis frequency are configurable.
 
-Every significant lesson uses eleven structured sections and evidence references. Confidence is visible as **Confirmed**, **Strongly supported**, **Hypothesis**, or **Unknown**. An agent's root-cause claim remains an attributed observation; a passing command is evidence of that command's result.
+Structured lessons retain evidence references and eleven detailed sections for the saved debrief. The conversation presents the explanation naturally and marks possible causes as uncertain. An agent's root-cause claim remains an attributed observation; a passing command is evidence of that command's result.
 
 ## Quick start
 
@@ -96,7 +89,7 @@ herdr plugin action invoke local.agent-academy.close
 herdr plugin action invoke local.agent-academy.toggle
 ```
 
-Standby performs local session discovery only: no event ingestion, source/diff collection or automatic model requests. Restarting learning skips completed work from the stopped period. An ongoing task's latest message may be retained as context; preceding investigation events are not backfilled. Existing lessons remain readable, and explicit **G / ASK** requests can still use the configured model without enabling capture.
+Standby performs local session discovery only: no event ingestion, source/diff collection or automatic model requests. Restarting learning skips completed work from the stopped period. An ongoing task's latest message may be retained as context; preceding investigation events are not backfilled. Existing lessons remain readable, and explicit follow-up questions can still use the configured model without enabling capture.
 
 <details>
 <summary><strong>Version pinning, updates and removal</strong></summary>
@@ -236,7 +229,7 @@ Remote source sharing requires explicit project-specific opt-in. HTTP explanatio
 
 **v0.1.0 MVP.** The application is implemented; validation scope is documented openly.
 
-- **109 automated tests** cover installation, onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. LIVE narration is immediate, even while a model is preparing a grounded explanation; raw patches and citations remain available in CODE and WHY. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
+- **113 automated tests** cover installation, onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. The single conversation starts explaining immediately, includes code and cited diagrams inline, retains reading position, and accepts follow-up questions without changing screens. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
 - Build, lint, deterministic demo, and actual project-matching **Codex 0.163.0** command/result parsing were verified during development.
 - Ubuntu 24.04 container validation covers clean installation, build/lint/tests, SQLite, offline reports, real loopback HTTP and real PTY keyboard navigation. The production image runs as a regular user with development dependencies removed. CI covers Ubuntu with Node 22.19 and 24.
 - Herdr pane open/close actions were exercised on the installed macOS server after fixing split targeting; the launcher is tested from another project directory. Native Ubuntu desktop/Herdr integration and real-model explanation quality still need target-machine validation.

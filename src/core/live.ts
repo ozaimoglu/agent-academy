@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { AcademyEvent, Lesson, Section, Session } from './types.js';
+import type { AcademyEvent, Section } from './types.js';
 import { isTestCommand } from './milestones.js';
 import { safeText } from './privacy.js';
 
@@ -59,7 +59,7 @@ function commandStep(e: AcademyEvent): Section | undefined {
     return step(
       e,
       'Değişikliği kaydediyoruz',
-      'Ajan değişiklikleri sürüm kontrolüne kaydediyor veya uzak depoya gönderiyor. Neyi değiştirdiğimizi ve kontrol sonuçlarını 6 REPORT üzerinden birlikte gözden geçirebiliriz.',
+      'Ajan değişiklikleri sürüm kontrolüne kaydediyor veya uzak depoya gönderiyor. Neyi değiştirdiğimizi ve kontrol sonuçlarını birlikte gözden geçirelim.',
     );
   return step(
     e,
@@ -95,7 +95,6 @@ function changeStep(e: AcademyEvent): Section {
         ? `${where} içindeki güncel değişikliği inceleyelim. Önceki kayıtla karşılaştırınca aşağıdaki farkı görüyoruz.`
         : `Ajan ${where} üzerinde değişiklik yaptı. Aşağıdaki satırlar, önceki davranış ile yeni uygulamayı karşılaştırmamıza yardımcı oluyor.`,
       ...snippets,
-      '3 CODE ile değişikliğin tamamını okuyabilirsin.',
     ].join('\n\n'),
   );
 }
@@ -156,7 +155,7 @@ export function narrateEvent(e: AcademyEvent): Section | undefined {
     return step(
       e,
       'Yapılanları bir araya getirelim',
-      `${prose(e.text)}\n\nAjan çalışmasını tamamladığını bildirdi. Değişikliği, gerekçesini ve gerçek kontrol sonuçlarını 6 REPORT üzerinden birlikte okuyabiliriz.`,
+      `${prose(e.text)}\n\nAjan çalışmasını tamamladığını bildirdi. Şimdi değişikliği, gerekçesini ve gerçek kontrol sonuçlarını birlikte değerlendirelim.`,
     );
   if (e.kind === 'error')
     return step(
@@ -189,67 +188,4 @@ export function observationWalkthrough(events: AcademyEvent[]): Section[] {
     })
     .slice(0, 6)
     .reverse();
-}
-
-interface LiveContext {
-  learning: 'paused' | 'starting' | 'active' | 'finishing';
-  captureId?: string;
-  selected?: Session;
-  events: AcademyEvent[];
-  lessons: Lesson[];
-  busy: boolean;
-  status: string;
-}
-
-export function renderLiveNarration(snapshot: LiveContext, offline = false): string {
-  const { events } = snapshot;
-  const lesson = snapshot.lessons.filter((l) => l.captureId === snapshot.captureId).at(-1);
-  const ids = new Set(events.map((e) => e.id));
-  const explained =
-    lesson?.provider !== 'offline'
-      ? (lesson?.walkthrough?.length
-          ? lesson.walkthrough
-          : (lesson?.sections.filter((s) =>
-              ['Ne oldu?', 'Kök neden', 'Çözüm neden çalışır?'].includes(s.heading),
-            ) ?? [])
-        ).filter((s) => s.evidence.length && s.evidence.every((id) => ids.has(id)))
-      : [];
-  const observations = observationWalkthrough(events);
-  const covered = new Set(explained.length ? lesson?.evidenceIds : []);
-  const latest = observations
-    .filter((s) => !s.evidence.every((id) => covered.has(id)))
-    .slice(-3)
-    .reverse();
-  const task = events.find((e) => e.kind === 'task');
-  const paused = snapshot.learning === 'paused';
-  return [
-    `# ${snapshot.status.startsWith('Tur tamamlandı') ? 'Tur tamamlandı · birlikte değerlendirelim' : paused ? 'Birlikte inceleyelim' : 'Şu an ne oluyor?'}`,
-    snapshot.selected
-      ? `${path.basename(snapshot.selected.cwd)}${snapshot.selected.branch ? ' · ' + snapshot.selected.branch : ''}`
-      : '',
-    paused ? snapshot.status : '',
-    task ? 'Hedefimiz: ' + prose(task.text, 240) : '',
-    '',
-    ...latest.slice(0, 1).flatMap((s) => [`## ${s.heading}`, s.body, '']),
-    ...explained.flatMap((s) => [
-      `## ${s.heading}${s.confidence === 'Hypothesis' ? ' · henüz bir ihtimal' : ''}`,
-      prose(s.body, 1800),
-      '',
-    ]),
-    ...latest.slice(1).flatMap((s) => [`## ${s.heading}`, s.body, '']),
-    !observations.length && !explained.length
-      ? paused
-        ? 'Öğrenmek istediğin işte B Başlat. İlk adımdan itibaren neye baktığımızı, bulduğumuz ipuçlarını ve değişikliklerin ne işe yaradığını birlikte konuşacağız.'
-        : 'Oturumdaki yeni adımları bekliyorum. Önce hangi dosyaların incelendiğini, sonra bulguyu ve çözümün gerekçesini açıklayacağım. Henüz bir inceleme veya hata bulgusu gözlenmedi.'
-      : '',
-    snapshot.busy ? 'Kod, bulgu ve sonucu birbirine bağlayan açıklamayı hazırlıyorum…' : '',
-    lesson?.error ? 'Ayrıntılı açıklama hazırlanamadı: ' + lesson.error : '',
-    offline && !explained.length && !paused
-      ? 'Şimdilik gözlediğimiz adımları özetliyorum. Koda özel neden-sonuç açıklamaları için S ayarlar üzerinden bir açıklama modeli seçebilirsin.'
-      : '',
-    paused ? 'B Başlat · bu görev için birlikte ilerleyelim.' : '',
-    '2 WHY: nedenleri konuşalım · 3 CODE: kodu inceleyelim',
-  ]
-    .filter((line) => line !== undefined)
-    .join('\n');
 }

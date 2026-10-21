@@ -2,31 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import TextInput from 'ink-text-input';
 import wrapAnsi from 'wrap-ansi';
-import { highlight } from 'cli-highlight';
 import type { Academy, AcademySnapshot } from '../core/academy.js';
 import type { Config } from '../storage/config.js';
 import { saveConfig } from '../storage/config.js';
-import { confidenceLabels, stageLabels } from '../core/types.js';
 import { OnboardingWizard } from './onboarding.js';
 import { theme as c } from './theme.js';
-import { renderDiagram } from './diagrams.js';
-import { timelineEdges } from '../core/teaching.js';
-import { createHerdrCall } from '../integration/herdr.js';
 import { safeText } from '../core/privacy.js';
-import { renderLiveNarration } from '../core/live.js';
+import { renderStory } from './story.js';
 
-const tabs = ['LIVE', 'WHY', 'CODE', 'VISUALIZE', 'ASK', 'REPORT'];
-const presets = [
-  'Bunu daha temelden anlat.',
-  'Bu sınıftaki gerçek kod üzerinden açıkla.',
-  'Buradaki mekanizma neden çalışmadı?',
-  'Alternatif çözüm ne olurdu?',
-  'Bu kod production’da hangi problemleri doğurabilir?',
-  'Bu davranışı testle nasıl kanıtlarız?',
-];
 function useSize() {
-  const stream = useStdout().stdout;
-  const stdout = stream as NodeJS.WriteStream;
+  const stdout = useStdout().stdout as NodeJS.WriteStream;
   const [size, setSize] = useState({ width: stdout.columns || 80, height: stdout.rows || 28 });
   useEffect(() => {
     const resize = () => setSize({ width: stdout.columns || 80, height: stdout.rows || 28 });
@@ -37,13 +22,7 @@ function useSize() {
   }, [stdout]);
   return size;
 }
-function colorLine(line: string) {
-  if (line.startsWith('+') && !line.startsWith('+++')) return c.accent;
-  if (line.startsWith('-') && !line.startsWith('---')) return c.error;
-  if (line.startsWith('#') || line.startsWith('@@')) return c.blue;
-  if (line.startsWith('Kanıt') || line.startsWith('[')) return c.muted;
-  return c.text;
-}
+
 export function AcademyTUI({
   academy,
   configDir,
@@ -60,22 +39,43 @@ export function AcademyTUI({
   const [snapshot, setSnapshot] = useState<AcademySnapshot>({ ...academy.snapshot });
   const [config, setConfig] = useState(initialConfig);
   const [wizard, setWizard] = useState(!initialConfig.onboarded);
-  const [tab, setTab] = useState(0);
-  const [lessonIndex, setLessonIndex] = useState(-1);
-  const [sectionIndex, setSectionIndex] = useState(0);
-  const [outline, setOutline] = useState(false);
   const [offset, setOffset] = useState(0);
-  const [sessions, setSessions] = useState(false);
+  const [following, setFollowing] = useState(true);
+  const [choosingSession, setChoosingSession] = useState(false);
   const [sessionIndex, setSessionIndex] = useState(0);
-  const [codeIndex, setCodeIndex] = useState(0);
   const [question, setQuestion] = useState('');
   const [typing, setTyping] = useState(false);
-  const [preset, setPreset] = useState(0);
-  const [concept, setConcept] = useState(0);
   const [notice, setNotice] = useState('');
-  const [qaVersion, setQaVersion] = useState(0);
+  const [answerVersion, setAnswerVersion] = useState(0);
   const { exit } = useApp();
   const { width, height } = useSize();
+  const innerWidth = Math.max(12, width - 6);
+  const visibleRows = Math.max(3, height - 7 - (typing ? 3 : 0));
+  const lessons = snapshot.lessons.filter((l) => l.captureId === snapshot.captureId);
+  const lesson = lessons.at(-1);
+  const questions = lessons.flatMap((l) => academy.questions(l));
+  const needsSession = !snapshot.selected && snapshot.sessions.length > 1;
+  const sessionText = [
+    'Hangi Codex oturumunu birlikte izleyelim?',
+    '',
+    ...snapshot.sessions.map(
+      (s, i) =>
+        `${i === sessionIndex ? '›' : ' '} ${s.branch ?? 'Codex'} · ${new Date(s.modified).toLocaleString('tr-TR')}\n  ${s.id}`,
+    ),
+    '',
+    '↑↓ seç · Enter bağlan · Esc dön',
+  ].join('\n');
+  const content = choosingSession
+    ? sessionText
+    : renderStory(snapshot, {
+        offline: config.provider.kind === 'offline',
+        width: innerWidth,
+        questions,
+      });
+  const lines = wrapAnsi(content, innerWidth, { hard: true, trim: false }).split('\n');
+  const bottom = Math.max(0, lines.length - visibleRows);
+  const start = following && !choosingSession ? bottom : Math.min(offset, bottom);
+
   useEffect(() => {
     const changed = (s: AcademySnapshot) => setSnapshot({ ...s });
     academy.on('change', changed);
@@ -84,42 +84,18 @@ export function AcademyTUI({
       academy.off('change', changed);
     };
   }, [academy, initialConfig.onboarded]);
-  const lesson =
-    snapshot.lessons[
-      lessonIndex < 0
-        ? snapshot.lessons.length - 1
-        : Math.min(lessonIndex, snapshot.lessons.length - 1)
-    ];
-  const evidence = lesson ? academy.evidence(lesson) : snapshot.events;
-  const code = evidence.filter((e) => ['diff', 'edit', 'source'].includes(e.kind));
-  const selectedCode = code[codeIndex % Math.max(1, code.length)];
-  const selectedSection = lesson?.sections[sectionIndex % (lesson?.sections.length || 1)];
-  const questions = lesson ? academy.questions(lesson) : [];
-  const innerWidth = Math.max(12, width - 6);
-  const visibleRows = Math.max(3, height - (width < 60 ? 11 : 10) - (typing ? 3 : 0));
-  const switchTab = (n: number) => {
-    setTab(n);
-    setOffset(0);
-    setOutline(false);
-  };
+
   const ask = async (text: string) => {
-    if (!lesson) {
-      setNotice('Önce bir ders oluşmalı.');
-      return;
-    }
+    if (!lesson || !text.trim()) return;
     setTyping(false);
-    setNotice('Soru bağımsız öğretim modeline gönderiliyor…');
-    const selectedConcept = lesson.concepts[concept % Math.max(1, lesson.concepts.length)];
+    setNotice('Sorunu birlikte ele alıyorum…');
+    setFollowing(true);
     try {
-      await academy.ask(
-        lesson,
-        (selectedConcept ? `Seçili kavram: ${selectedConcept}.\n` : '') + text,
-      );
-      setQaVersion((v) => v + 1);
-      setNotice('Yanıt derse kaydedildi.');
-      setOffset(0);
-    } catch (e) {
-      setNotice(safeText((e as Error).message, 300));
+      await academy.ask(lesson, text);
+      setAnswerVersion((v) => v + 1);
+      setNotice('');
+    } catch (error) {
+      setNotice(safeText((error as Error).message, 300));
     }
   };
   useInput((input, key) => {
@@ -129,22 +105,19 @@ export function AcademyTUI({
       return;
     }
     input = input.toLowerCase();
-    if (sessions) {
-      if (key.escape) {
-        setSessions(false);
-        return;
-      }
-      if (key.downArrow)
-        setSessionIndex((sessionIndex + 1) % Math.max(1, snapshot.sessions.length));
+    if (choosingSession) {
+      if (key.escape) setChoosingSession(false);
+      if (key.downArrow) setSessionIndex((n) => (n + 1) % Math.max(1, snapshot.sessions.length));
       if (key.upArrow)
         setSessionIndex(
-          (sessionIndex + snapshot.sessions.length - 1) % Math.max(1, snapshot.sessions.length),
+          (n) => (n + snapshot.sessions.length - 1) % Math.max(1, snapshot.sessions.length),
         );
       if (key.return && snapshot.sessions[sessionIndex]) {
-        void academy.select(snapshot.sessions[sessionIndex]!);
-        setSessions(false);
-        setLessonIndex(-1);
-        setOffset(0);
+        void academy
+          .select(snapshot.sessions[sessionIndex]!)
+          .catch((error) => setNotice(safeText((error as Error).message, 300)));
+        setChoosingSession(false);
+        setFollowing(true);
       }
       return;
     }
@@ -159,6 +132,7 @@ export function AcademyTUI({
     }
     if (input === 'b') {
       setNotice('');
+      setFollowing(true);
       void academy
         .beginLearning({ replay: demo })
         .catch((error) => setNotice(safeText((error as Error).message, 300)));
@@ -166,7 +140,7 @@ export function AcademyTUI({
     }
     if (input === 'd') {
       academy.pauseLearning();
-      setNotice('Durduruldu. Yeni gözlem ve otomatik model isteği yok.');
+      setNotice('Durduruldu. Yeniden başlamak için B.');
       return;
     }
     if (input === 's') {
@@ -174,113 +148,43 @@ export function AcademyTUI({
       setWizard(true);
       return;
     }
-    if (input === 'c') {
-      setSessions(true);
-      return;
-    }
-    if (input === 'g') {
-      try {
-        academy.requestLesson();
-        setNotice('Seçili kanıtlardan tek açıklama isteniyor.');
-      } catch (error) {
-        setNotice((error as Error).message);
-      }
-      return;
-    }
-    if (input === 'e') {
-      void academy
-        .export()
-        .then((file) => setNotice('Dışa aktarıldı: ' + file))
-        .catch((e) => setNotice((e as Error).message));
-      return;
-    }
-    if (input === 'z') {
-      if (process.env.HERDR_ENV === '1' && process.env.HERDR_PANE_ID)
-        void createHerdrCall()([
-          'pane',
-          'zoom',
-          '--pane',
-          process.env.HERDR_PANE_ID,
-          '--toggle',
-        ]).catch((e) => setNotice((e as Error).message));
-      else setNotice('Geniş okuma için terminali büyütün; Herdr içinde Z pane’i yakınlaştırır.');
-      return;
-    }
-    if (/^[1-6]$/.test(input)) {
-      switchTab(Number(input) - 1);
-      return;
-    }
-    if (key.tab || key.rightArrow) {
-      switchTab((tab + 1) % tabs.length);
-      return;
-    }
-    if (key.leftArrow) {
-      switchTab((tab + tabs.length - 1) % tabs.length);
-      return;
-    }
-    if (input === '[' || input === ']') {
-      setLessonIndex(
-        Math.max(
-          0,
-          Math.min(
-            snapshot.lessons.length - 1,
-            (lessonIndex < 0 ? snapshot.lessons.length - 1 : lessonIndex) +
-              (input === ']' ? 1 : -1),
-          ),
-        ),
-      );
+    if (input === 'c' && needsSession) {
+      setSessionIndex(0);
       setOffset(0);
+      setChoosingSession(true);
       return;
     }
-    if (tab === 1 && (input === ',' || input === '.')) {
-      setSectionIndex(
-        (sectionIndex + (input === '.' ? 1 : (lesson?.sections.length ?? 1) - 1)) %
-          (lesson?.sections.length || 1),
-      );
-      setOffset(0);
-      return;
-    }
-    if (tab === 1 && key.return) {
-      setOutline(!outline);
-      setOffset(0);
-      return;
-    }
-    if (tab === 1 && outline && (key.downArrow || key.upArrow)) {
-      setSectionIndex(
-        (sectionIndex + (key.downArrow ? 1 : (lesson?.sections.length ?? 1) - 1)) %
-          (lesson?.sections.length || 1),
-      );
-      return;
-    }
-    if (tab === 2 && input === 'n') {
-      setCodeIndex(codeIndex + 1);
-      setOffset(0);
-      return;
-    }
-    if (tab === 4) {
-      if (input === 'a') {
-        setTyping(true);
+    if (key.return) {
+      if (snapshot.busy) setNotice('Devam eden açıklama tamamlanınca sorunu yazabilirsin.');
+      else if (!lesson) {
+        if (!snapshot.events.length) setNotice('İlk gözlem geldiğinde burada soru sorabilirsin.');
+        else {
+          try {
+            academy.requestLesson();
+            setSnapshot({ ...academy.snapshot });
+            setNotice('');
+          } catch (error) {
+            setNotice(safeText((error as Error).message, 300));
+          }
+        }
+      } else {
         setQuestion('');
-        return;
+        setTyping(true);
+        setNotice('');
       }
-      if (input === 'p') {
-        setPreset((preset + 1) % presets.length);
-        return;
-      }
-      if (input === 'k') {
-        setConcept(concept + 1);
-        return;
-      }
-      if (key.return) {
-        void ask(presets[preset]!);
-        return;
-      }
+      return;
     }
-    if (key.downArrow || input === 'j') setOffset((o) => o + 1);
-    if (key.upArrow || input === 'k') setOffset((o) => Math.max(0, o - 1));
-    if (key.pageDown || input === ' ') setOffset((o) => o + visibleRows - 1);
-    if (key.pageUp) setOffset((o) => Math.max(0, o - visibleRows + 1));
-    if (key.home) setOffset(0);
+    if (key.upArrow || input === 'k' || key.pageUp || key.home) {
+      setFollowing(false);
+      setOffset(key.home ? 0 : Math.max(0, start - (key.pageUp ? visibleRows - 1 : 1)));
+    }
+    if (key.downArrow || input === 'j' || key.pageDown || input === ' ' || key.end) {
+      const next = key.end
+        ? bottom
+        : Math.min(bottom, start + (key.pageDown || input === ' ' ? visibleRows - 1 : 1));
+      setOffset(next);
+      setFollowing(next === bottom);
+    }
   });
   if (wizard)
     return (
@@ -290,169 +194,40 @@ export function AcademyTUI({
         settings={config.onboarded}
         width={width}
         height={height}
-        onCancel={() => {
-          if (config.onboarded) setWizard(false);
-          else exit();
-        }}
+        onCancel={() => (config.onboarded ? setWizard(false) : exit())}
         onSave={async (next) => {
           await saveConfig(configDir, next);
-          const was = config.onboarded;
+          const wasOnboarded = config.onboarded;
           setConfig(next);
           academy.setConfig(next);
           setWizard(false);
-          if (!was) academy.watch();
+          setFollowing(true);
+          if (!wasOnboarded) academy.watch();
         }}
       />
     );
   if (width < 24 || height < 12)
     return (
       <Box flexDirection="column">
-        <Text color={c.accent}>◈ Academy</Text>
-        <Text>En az 24 sütun × 12 satır.</Text>
-        <Text>Z: yakınlaştır · Q: çık</Text>
+        <Text>◈ Academy</Text>
+        <Text>Biraz daha geniş bir terminal aç.</Text>
+        <Text>Q kapat</Text>
       </Box>
     );
-  let content: string;
-  if (sessions)
-    content = [
-      '# Codex oturumu seç',
-      snapshot.status,
-      '',
-      ...snapshot.sessions.map(
-        (s, i) =>
-          `${i === sessionIndex ? '›' : ' '} ${s.id}\n  ${s.source} · ${new Date(s.modified).toLocaleString('tr-TR')}\n  ${s.cwd}`,
-      ),
-      '',
-      '↑↓ seç · Enter bağlan · Esc dön',
-    ].join('\n');
-  else if (tab === 0) content = renderLiveNarration(snapshot, config.provider.kind === 'offline');
-  else if (tab === 1)
-    content = !lesson
-      ? '# Ders bekleniyor\nÖğrenmek istediğin görevde B Başlat. Anlamlı aşamalarda açıklama oluşur.'
-      : outline
-        ? [
-            '# Ders bölümleri',
-            lesson.title,
-            '',
-            ...lesson.sections.map(
-              (s, i) =>
-                `${i === sectionIndex ? '›' : ' '} ${String(i + 1).padStart(2, '0')} ${s.heading} · ${confidenceLabels[s.confidence]}`,
-            ),
-            '',
-            '↑↓ bölüm seç · Enter oku',
-          ].join('\n')
-        : [
-            `# ${lesson.title}`,
-            `Ders ${snapshot.lessons.indexOf(lesson) + 1}/${snapshot.lessons.length} · ${lesson.provider}`,
-            lesson.error ? 'Model kullanılamadı: ' + lesson.error : '',
-            lesson.concepts.length ? 'Kavramlar: ' + lesson.concepts.join(' · ') : '',
-            `## ${selectedSection?.heading ?? ''}`,
-            `[${selectedSection ? confidenceLabels[selectedSection.confidence] : ''}]`,
-            selectedSection?.body ?? '',
-            `Kanıt: ${selectedSection?.evidence.join(', ') || 'yok / doğrulanmadı'}`,
-            '',
-            ', / . bölüm · Enter içindekiler · [ / ] ders',
-          ].join('\n');
-  else if (tab === 2) {
-    let text =
-      selectedCode?.text ??
-      'Kod farkı veya kaynak henüz gözlenmedi. Git HEAD ile çalışma ağacı karşılaştırılır; gözlenen apply_patch içerikleri de gösterilir.';
-    if (selectedCode?.kind === 'source') {
-      try {
-        text = highlight(text, {
-          language: selectedCode.file?.endsWith('.java') ? 'java' : 'typescript',
-          ignoreIllegals: true,
-        });
-      } catch {
-        /* Plain source remains readable. */
-      }
-    }
-    content = [
-      `# Gerçek kod · ${code.length ? (codeIndex % code.length) + 1 : 0}/${code.length}`,
-      selectedCode
-        ? `${selectedCode.file ?? 'Gözlenen yama'} ${selectedCode.startLine ? ':' + selectedCode.startLine + '-' + selectedCode.endLine : ''}\n[${selectedCode.id}]`
-        : '',
-      selectedCode?.kind === 'diff'
-        ? 'HEAD → gözlenen çalışma ağacı (başka değişiklikler de olabilir)'
-        : '',
-      text,
-      '',
-      'N sonraki kaynak · [ / ] ders',
-    ].join('\n');
-  } else if (tab === 3)
-    content = [
-      '# Kanıta bağlı akış',
-      lesson?.diagram.length
-        ? 'Modelin kanıta bağlı ilişkileri'
-        : 'Gözlenen olayların zaman sırası; mimari ilişki iddiası değildir.',
-      '',
-      renderDiagram(lesson?.diagram.length ? lesson.diagram : timelineEdges(evidence), innerWidth),
-      '',
-      '[ / ] ders · Z geniş okuma',
-    ].join('\n');
-  else if (tab === 4)
-    content = [
-      '# Birlikte derinleşelim',
-      lesson?.title ?? 'Önce bir ders seç.',
-      `Kavram: ${lesson?.concepts[concept % Math.max(1, lesson.concepts.length)] ?? 'Dersin tamamı'} · K değiştir`,
-      '',
-      `› ${presets[preset]}`,
-      'P öneri değiştir · Enter sor · A kendi sorunu yaz',
-      '',
-      ...questions
-        .slice()
-        .reverse()
-        .flatMap((q) => [
-          `## ${q.question}`,
-          ...q.answer.flatMap((a) => [
-            `[${confidenceLabels[a.confidence]}] ${a.heading}`,
-            a.body,
-            `Kanıt: ${a.evidence.join(', ') || 'yok'}`,
-          ]),
-          '',
-        ]),
-    ].join('\n');
-  else content = academy.report();
-  const lines = wrapAnsi(content, innerWidth, { hard: true, trim: false }).split('\n');
-  const start = Math.min(offset, Math.max(0, lines.length - visibleRows));
-  const usage = [...snapshot.lessons.map((l) => l.usage), ...questions.map((q) => q.usage)].filter(
-    (u) => !!u,
-  );
-  const total = snapshot.usage
-    ? snapshot.usage.input + snapshot.usage.output
-    : usage.reduce((sum, u) => sum + u!.input + u!.output, 0);
-  const estimated = snapshot.usage?.estimated ?? usage.some((u) => u?.estimated);
   return (
     <Box flexDirection="column" width={width} height={height} paddingX={1}>
       <Box justifyContent="space-between">
         <Text bold color={c.accent}>
           ◈ {width < 45 ? 'ACADEMY' : 'AGENT ACADEMY'}
         </Text>
-        <Text color={snapshot.learning === 'paused' ? c.muted : c.accent}>
+        <Text color={c.muted}>
           {demo ? 'DEMO · ' : ''}
           {snapshot.learning === 'paused'
-            ? 'Ⅱ BEKLEMEDE'
-            : snapshot.learning === 'finishing'
-              ? '◌ RAPOR'
-              : '● ÖĞRENİYOR'}
+            ? 'BEKLEMEDE'
+            : snapshot.busy
+              ? 'Anlatıyorum…'
+              : 'Birlikte izliyoruz'}
         </Text>
-      </Box>
-      <Text color={c.muted}>
-        {snapshot.busy ? '◌ açıklanıyor' : stageLabels[snapshot.stage]} ·{' '}
-        {total.toLocaleString('tr-TR')} token{estimated ? ' (tahmini)' : ''}
-        {config.provider.kind === 'codex' ? ' · Codex kotası' : ''}
-      </Text>
-      <Text color={c.accent} wrap="truncate-end">
-        {snapshot.learning === 'paused' ? '[B Başlat]' : '[D Durdur]'} · S ayarlar ·{' '}
-        {onClosePanel ? 'Q paneli kapat' : 'Q çık'}
-      </Text>
-      <Box marginTop={1} flexWrap="wrap">
-        {tabs.map((t, i) => (
-          <Text key={t} bold={tab === i} color={tab === i ? c.accent : c.muted}>
-            {i + 1} {width < 48 ? t.slice(0, 4) : t}
-            {'  '}
-          </Text>
-        ))}
       </Box>
       <Box
         flexDirection="column"
@@ -462,15 +237,19 @@ export function AcademyTUI({
         borderColor={c.border}
         paddingX={1}
       >
-        {lines.slice(start, start + visibleRows).map((l, i) => (
-          <Text key={`${tab}-${i}-${qaVersion}`} color={colorLine(l)} wrap="truncate-end">
-            {l || ' '}
+        {lines.slice(start, start + visibleRows).map((line, i) => (
+          <Text
+            key={`${i}-${answerVersion}`}
+            color={line.startsWith('#') ? c.blue : c.text}
+            wrap="truncate-end"
+          >
+            {line.replace(/^#{1,3}\s+/, '') || ' '}
           </Text>
         ))}
       </Box>
       {typing && (
         <Box flexDirection="column">
-          <Text color={c.accent}>Sorun · Enter gönder / Esc iptal</Text>
+          <Text color={c.accent}>Sorunu yaz · Enter gönder · Esc vazgeç</Text>
           <TextInput
             value={question}
             onChange={(v) => setQuestion(v.slice(0, 2000))}
@@ -481,12 +260,19 @@ export function AcademyTUI({
       <Text color={notice ? c.accent : snapshot.warning ? c.warning : c.muted} wrap="truncate-end">
         {notice ||
           snapshot.warning ||
-          `${start + 1}–${Math.min(start + visibleRows, lines.length)} / ${lines.length} · ↑↓ kaydır · Space sayfa`}
+          (needsSession
+            ? 'C ile izlemek istediğin oturumu seç.'
+            : following
+              ? 'Yeni açıklamalar burada devam eder.'
+              : 'Geçmişi okuyorsun · End ile bugüne dön.')}
+      </Text>
+      <Text color={c.accent} wrap="truncate-end">
+        {snapshot.learning === 'paused'
+          ? '[B Başlat] · S ayarlar · Q kapat'
+          : '[D Durdur] · Q kapat'}
       </Text>
       <Text color={c.muted} wrap="truncate-end">
-        {width < 55
-          ? 'C oturum · G açıkla · Z geniş'
-          : 'C oturum · G açıkla · E dışa aktar · Z geniş'}
+        ↑↓ kaydır{lesson ? ' · Enter soru sor' : snapshot.events.length ? ' · Enter açıkla' : ''}
       </Text>
     </Box>
   );

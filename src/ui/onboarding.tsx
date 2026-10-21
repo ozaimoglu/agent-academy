@@ -348,7 +348,7 @@ export function OnboardingWizard({
         <Box marginTop={1} flexDirection="column">
           <Text color={c.muted}>
             {config.provider.kind === 'offline'
-              ? 'Kanıt ve rapor hazır. Derin açıklama ve ASK için daha sonra model ekleyebilirsin.'
+              ? 'Gözlenen adımları okuyabilirsin. Derin açıklamalar ve soruların için daha sonra model ekleyebilirsin.'
               : `Model: ${config.provider.model || (config.provider.kind === 'codex' ? 'CLI varsayılanı' : 'A ile model adını gir')} · ${config.provider.minIntervalSeconds} sn`}
           </Text>
           <Text color={c.muted}>
