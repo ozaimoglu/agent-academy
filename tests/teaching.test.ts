@@ -52,6 +52,14 @@ function modelReply(id: string) {
   return JSON.stringify({
     title: 'Proxy çağrı sınırı',
     concepts: ['Spring AOP'],
+    walkthrough: [
+      {
+        heading: 'Bu satır neden önemli?',
+        body: 'Gerçek kodu davranışla ilişkilendiriyoruz.',
+        evidence: [id],
+        confidence: 'Confirmed',
+      },
+    ],
     sections: headings.map((heading) => ({
       heading,
       body: 'Gerçek proje gözlemi ve temel mekanizma.',
@@ -71,12 +79,15 @@ it('validates citations, downgrades generated certainty and supplies real code f
   const lesson = await engine.lesson('s', 'COMPLETED', [e]);
   expect(lesson.error).toBeUndefined();
   expect(lesson.sections[0]?.confidence).toBe('Strongly supported');
+  expect(lesson.walkthrough?.[0]?.confidence).toBe('Strongly supported');
+  expect(lesson.walkthrough?.[0]?.evidence).toEqual([e.id]);
   expect(lesson.usage?.input).toBe(100);
   const q = await engine.ask(lesson, 'Neden proxy?', [e], []);
   expect(q.answer[0]?.evidence).toContain(e.id);
   expect(explain.mock.calls[1]?.[1]).toContain('writer.persist');
   expect(explain.mock.calls[0]?.[0]).toContain('GÜVENİLMEYEN');
   expect(explain.mock.calls[0]?.[0]).toContain('paragraf sayısı limiti yok');
+  expect(explain.mock.calls[0]?.[0]).toContain('walkthrough');
 });
 it('rejects fabricated evidence and falls back honestly on failed or missing providers', async () => {
   const e = event('task', 'fix');
@@ -85,6 +96,13 @@ it('rejects fabricated evidence and falls back honestly on failed or missing pro
     explain: async () => ({ text: modelReply('invented-id') }),
   });
   expect((await fabricated.lesson('s', 'INVESTIGATING', [e])).error).toContain('kanıta');
+  const inventedWalkthrough = JSON.parse(modelReply(e.id));
+  inventedWalkthrough.walkthrough[0].evidence = ['invented-id'];
+  const invalidLive = new TeachingEngine(defaultConfig(), {
+    name: 'bad-live',
+    explain: async () => ({ text: JSON.stringify(inventedWalkthrough) }),
+  });
+  expect((await invalidLive.lesson('s', 'INVESTIGATING', [e])).error).toContain('kanıta');
   const failed: LLMProvider = {
     name: 'failed',
     explain: async () => {

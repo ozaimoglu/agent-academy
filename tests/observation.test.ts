@@ -220,6 +220,34 @@ it('starts live capture at complete EOF, retains only the unfinished task, and p
   const next = await adapter.read(selected, tail.checkpoint);
   expect(next.events.map((e) => e.text)).toEqual(['Yeni gözlem 🔎']);
 });
+it('extracts real per-file patches from Codex structured FileChange records', () => {
+  const n = new SessionEventNormalizer('one');
+  const changes = {
+    'src/Service.ts': {
+      type: 'update',
+      unified_diff: '@@ -1 +1 @@\n-old();\n+fixed();',
+      move_path: null,
+    },
+    'tests/Service.test.ts': {
+      type: 'update',
+      unified_diff: '@@ -1 +1 @@\n-expect(old);\n+expect(fixed);',
+      move_path: null,
+    },
+  };
+  const events = n.normalize({
+    type: 'event_msg',
+    payload: {
+      type: 'item_completed',
+      item: { type: 'FileChange', id: 'edit-1', changes, status: 'Completed' },
+    },
+  });
+  expect(events).toHaveLength(2);
+  expect(events[0]?.file).toBe('src/Service.ts');
+  expect(events[0]?.text).toContain('*** Update File: src/Service.ts\n@@');
+  expect(events[0]?.text).toContain('+fixed();');
+  expect(events[1]?.file).toBe('tests/Service.test.ts');
+  expect(events[0]?.id).not.toBe(events[1]?.id);
+});
 it('does not seed a completed historical task and verifies metadata before tailing a replaced file', async () => {
   const { root, sessions } = await workspace();
   const file = await rollout(sessions, root, 'one', row('event_msg', { type: 'task_complete' }));

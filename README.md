@@ -34,7 +34,7 @@ Six focused views, with scrolling, lesson navigation, and a wider reading mode:
 
 | View          | What you learn                                                                                                    |
 | ------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **LIVE**      | What the agent is investigating, changing, and validating right now.                                              |
+| **LIVE**      | A plain-language walkthrough from the first step: what we are inspecting, what changed, why it matters, and what the checks show. |
 | **WHY**       | The problem, suspected cause, underlying mechanism, design decisions, alternatives, and trade-offs.               |
 | **CODE**      | Observed patches, Git HEAD → worktree differences, and relevant source excerpts with line numbers.                |
 | **VISUALIZE** | Terminal-native diagrams derived from cited relationships or the observed event timeline.                         |
@@ -236,7 +236,7 @@ Remote source sharing requires explicit project-specific opt-in. HTTP explanatio
 
 **v0.1.0 MVP.** The application is implemented; validation scope is documented openly.
 
-- **98 automated tests** cover installation, onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
+- **109 automated tests** cover installation, onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. LIVE narration is immediate, even while a model is preparing a grounded explanation; raw patches and citations remain available in CODE and WHY. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
 - Build, lint, deterministic demo, and actual project-matching **Codex 0.163.0** command/result parsing were verified during development.
 - Ubuntu 24.04 container validation covers clean installation, build/lint/tests, SQLite, offline reports, real loopback HTTP and real PTY keyboard navigation. The production image runs as a regular user with development dependencies removed. CI covers Ubuntu with Node 22.19 and 24.
 - Herdr pane open/close actions were exercised on the installed macOS server after fixing split targeting; the launcher is tested from another project directory. Native Ubuntu desktop/Herdr integration and real-model explanation quality still need target-machine validation.

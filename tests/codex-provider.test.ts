@@ -203,6 +203,31 @@ it('labels usage estimates when the CLI omits accounting', async () => {
   const result = await new CodexCLIProvider(config(), process.env, file).explain('s', 'c');
   expect(result.usage?.estimated).toBe(true);
 });
+it('accepts the real Codex 0.163 startup warnings without mistaking them for tool calls', async () => {
+  const { file } = await fakeCodex({
+    run: `
+    emit({type:'item.completed',item:{type:'error',message:'Under-development features enabled: skip_host_skill_discovery. Under-development features are incomplete.'}});
+    emit({type:'item.completed',item:{type:'error',message:'Code Mode is unavailable because code-mode host is disabled. Code mode will fail closed; enable features.code_mode_host.'}});
+    emit({type:'item.completed',item:{type:'agent_message',text:'Türkçe açıklama hazır.'}});
+    emit({type:'turn.completed',usage:{input_tokens:10,output_tokens:5}});
+  `,
+  });
+  const reply = await new CodexCLIProvider(config(), process.env, file).explain('s', 'c');
+  expect(reply.text).toBe('Türkçe açıklama hazır.');
+  expect(reply.usage?.input).toBe(10);
+});
+it('stops on other CLI item errors and keeps private diagnostics out of the UI', async () => {
+  const { file } = await fakeCodex({
+    run: `emit({type:'item.completed',item:{type:'error',message:'private-project-context unexpected failure'}}); emit({type:'turn.completed'});`,
+  });
+  try {
+    await new CodexCLIProvider(config(), process.env, file).explain('s', 'c');
+    expect.fail('Expected CLI error');
+  } catch (error) {
+    expect((error as Error).message).toContain('oturumunda hata');
+    expect((error as Error).message).not.toContain('private-project-context');
+  }
+});
 it('classifies blocked process startup without exposing stderr context', async () => {
   const { file } = await fakeCodex({
     run: `console.error('Operation not permitted private-project-context'); process.exitCode = 1;`,

@@ -259,6 +259,24 @@ export class CodexCLIProvider implements LLMProvider {
         }
         if (row.type === 'item.started' || row.type === 'item.completed') {
           const item = row.item;
+          if (item?.type === 'error') {
+            // Codex 0.163 emits these startup diagnostics as error items even on a
+            // successful, tool-free turn. They describe capabilities we disable.
+            const message = typeof item.message === 'string' ? item.message : '';
+            if (
+              message.startsWith(
+                'Under-development features enabled: skip_host_skill_discovery.',
+              ) ||
+              message.startsWith('Code Mode is unavailable because code-mode host is disabled.')
+            )
+              return;
+            fail(
+              new Error(
+                'Codex açıklama oturumunda hata bildirdi. CLI girişini, bağlantıyı ve /status bilgisini kontrol edin.',
+              ),
+            );
+            return;
+          }
           if (!item || !['agent_message', 'reasoning'].includes(item.type)) {
             fail(new Error('Codex öğretici araç çağırmayı denedi; açıklama durduruldu.'));
             return;

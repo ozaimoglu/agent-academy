@@ -2,6 +2,16 @@
 
 Date: 2026-10-21. Host: macOS. Target: Ubuntu 24.04.
 
+## Conversational LIVE walkthrough
+
+- `npm run check`: **109 tests across 11 files**, lint, strict TypeScript and build passed on macOS. `npm run smoke:terminal` passed with the updated LIVE screen.
+- Tests cover a useful explanation before any lesson/model response, the reported source/diff-only case with a real before/after excerpt, hidden raw IDs and logs, uncertain vs failed/passing checks, grounded model narration, immediate newer activity and exclusion of another capture's old explanation.
+- Integration tests verify the ongoing task starts an explanation immediately, new Git changes trigger teaching without a new Codex event, unchanged code does not repeat it, and the rendered TUI keeps full raw patches accessible in CODE.
+- Structured Codex `FileChange.changes` maps now become individual real file patches, rather than an opaque JSON object. A regression uses the observed `type`, `unified_diff`, `move_path` record shape.
+- Provider fixture tests validate citations and confidence in the new `walkthrough` field and reject fabricated references there. These checks do not claim real-model teaching quality was evaluated.
+- A live Codex probe exposed two startup diagnostics emitted as `item.completed` / `error`: the unstable `skip_host_skill_discovery` notice and the intentionally disabled Code Mode host notice. The provider now ignores only these known informational prefixes instead of misclassifying them as tool calls. Other item errors fail with a redacted diagnostic; actual tool items are still rejected. Regression tests cover both cases. Invocation permissions and disabled capabilities are unchanged. JSONL transport was checked against [official non-interactive documentation](https://learn.chatgpt.com/docs/non-interactive-mode).
+- A subsequent real Codex/ChatGPT teaching request succeeded with synthetic TypeScript evidence only: three Turkish LIVE explanations tied mutation to the actual `values[index]` assignment, contrasted it with the observed `map` change, and correctly distinguished the synthetic result record from an executed test. All eleven lesson sections and evidence references passed the normal decoder. Recorded usage: 9,026 input / 1,595 output tokens. This validates one synthetic lesson, not broad real-project teaching quality. No project source or private reasoning was inspected by this check.
+
 ## Ubuntu 24.04 acceptance
 
 Executed on 2026-10-21 using Docker Desktop's Linux kernel and an **Ubuntu 24.04.5 LTS arm64** userspace, Node **v22.23.4**, npm **10.9.9**, Git **2.43.0**, running Academy as UID **10001**. This is container validation; native Ubuntu desktop/Herdr pane integration and real-model quality remain separate.

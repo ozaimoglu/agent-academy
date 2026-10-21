@@ -63,6 +63,12 @@ npm start -- --project /absolute/path/to/project
 
 Yalnızca seçili projenin kanonik cwd’siyle eşleşen oturumlar kabul edilir. Codex’i bir alt dizinde çalıştırdıysanız aynı alt dizini seçin. Herdr eylemi hedef pane’in gerçek foreground cwd’sini kullanır.
 
+## LIVE: Yanında oturan kıdemli mühendis gibi
+
+LIVE ilk gözlemden itibaren neyi incelediğimizi ve bunun ne işe yaradığını sade Türkçeyle anlatır. Model yanıtı beklerken de ekran boş kalmaz: dosya arama, kod okuma, değişiklik ve kontrol sonuçları hemen açıklanır. Hash, SOURCE/DIFF etiketi ve ders sayacı bu akışta gösterilmez. Gerçek yama CODE, ayrıntılı açıklamalar ve kanıtlar WHY içindedir.
+
+Açıklama modeli seçiliyse aynı ders isteği ayrıca LIVE için kısa bir anlatım üretir: **neye bakıyoruz → bulgu veya olası neden → önce/sonra kodu ve beklenen etkisi → gözlenen kontrol sonucu**. Bu açıklamalar verilen kanıtlara bağlanır. Çevrimdışı mod gözlenen adımları ve gerçek kod farklarını özetler; koda özel yeni bir neden-sonuç iddiası üretmez. B ile başlatıldığında devam eden görevin hedefi hemen açıklama bağlamına alınır. Yalnızca Git değişikliği gözlense bile otomatik analiz açıksa açıklama hazırlanır; değişmeyen kod için tekrar tekrar istek yapılmaz.
+
 ## Terminal kullanımı
 
 | Tuş                | İşlem                                               |

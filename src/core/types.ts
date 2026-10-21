@@ -62,6 +62,7 @@ export interface Lesson {
   stage: Stage;
   title: string;
   sections: Section[];
+  walkthrough?: Section[];
   concepts: string[];
   diagram: DiagramEdge[];
   evidenceIds: string[];

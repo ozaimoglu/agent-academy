@@ -81,6 +81,29 @@ export class SessionEventNormalizer {
           });
           return [...commandEvent, ...resultEvent];
         }
+        if (
+          kind === 'FileChange' &&
+          p.item.changes &&
+          !Array.isArray(p.item.changes) &&
+          typeof p.item.changes === 'object'
+        ) {
+          return Object.entries(p.item.changes).flatMap(([file, value]) => {
+            const change = value as {
+              type?: string;
+              unified_diff?: string;
+              content?: string;
+            } | null;
+            if (!change || typeof change !== 'object') return [];
+            const diff = change.unified_diff ?? change.content;
+            if (typeof diff !== 'string') return [];
+            const operation =
+              change.type === 'add' ? 'Add' : change.type === 'delete' ? 'Delete' : 'Update';
+            return create('edit', `*** ${operation} File: ${file}\n${diff}`, {
+              callId: `${item.id}:${file}`,
+              file: safeText(file, 1000),
+            });
+          });
+        }
         if (kind === 'FileChange' || kind === 'Patch')
           return create('edit', item.changes ?? item.diff ?? '', { callId: item.id });
         // Reasoning, raw_content and unknown extension payloads are intentionally ignored.

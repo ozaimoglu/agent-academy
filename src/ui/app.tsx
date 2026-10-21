@@ -13,6 +13,7 @@ import { renderDiagram } from './diagrams.js';
 import { timelineEdges } from '../core/teaching.js';
 import { createHerdrCall } from '../integration/herdr.js';
 import { safeText } from '../core/privacy.js';
+import { renderLiveNarration } from '../core/live.js';
 
 const tabs = ['LIVE', 'WHY', 'CODE', 'VISUALIZE', 'ASK', 'REPORT'];
 const presets = [
@@ -324,30 +325,7 @@ export function AcademyTUI({
       '',
       '↑↓ seç · Enter bağlan · Esc dön',
     ].join('\n');
-  else if (tab === 0)
-    content = [
-      `# ${snapshot.learning === 'paused' ? 'Öğrenme beklemede' : stageLabels[snapshot.stage]}`,
-      snapshot.status,
-      snapshot.selected
-        ? `${snapshot.selected.cwd}\n${snapshot.selected.branch ?? 'dal bilinmiyor'} · ${snapshot.selected.id}`
-        : 'Codex’i bu projede normal biçimde başlat. C ile oturum seç.',
-      '',
-      snapshot.learning === 'paused'
-        ? '▶ B Başlat: yalnızca seçtiğin görev için öğren.\n■ D Durdur: gözlemi ve model isteğini kes.\nTur bitince yeniden beklemeye geçer.\nGeçmişteki işler otomatik işlenmez.'
-        : '■ D Durdur · bu tur bitince otomatik bekleme',
-      '',
-      snapshot.busy
-        ? '◌ Ders hazırlanıyor…'
-        : `${snapshot.eventCount} gözlem · ${snapshot.lessons.length} ders`,
-      '',
-      ...snapshot.events
-        .slice(-22)
-        .reverse()
-        .map(
-          (e) =>
-            `${e.kind === 'result' ? (e.exitCode === 0 ? '✓' : e.exitCode === undefined ? '○' : '!') : '·'} ${e.time.slice(11, 19)} ${e.kind.toUpperCase()}\n  ${(e.command ?? (e.kind === 'source' ? `${e.file}:${e.startLine}–${e.endLine}` : (e.text.split('\n')[0] ?? ''))).slice(0, 240)}${e.kind === 'result' ? '\n  çıkış: ' + (e.exitCode ?? 'bilinmiyor') : ''}\n  [${e.id}]`,
-        ),
-    ].join('\n');
+  else if (tab === 0) content = renderLiveNarration(snapshot, config.provider.kind === 'offline');
   else if (tab === 1)
     content = !lesson
       ? '# Ders bekleniyor\nÖğrenmek istediğin görevde B Başlat. Anlamlı aşamalarda açıklama oluşur.'

@@ -14,6 +14,7 @@ import { associatedPane, createHerdrCall } from '../integration/herdr.js';
 
 export interface AcademySnapshot {
   learning: 'paused' | 'starting' | 'active' | 'finishing';
+  captureId?: string;
   sessions: Session[];
   selected?: Session;
   events: AcademyEvent[];
@@ -144,6 +145,7 @@ export class Academy extends EventEmitter {
         this.detector.observe(tail.task);
         this.pending = true;
       }
+      this.snapshot.captureId = this.window.id;
       this.snapshot.events = this.windowEvents(selected);
       this.snapshot.eventCount = this.windowCount(selected);
       this.snapshot.stage = 'INVESTIGATING';
@@ -226,6 +228,7 @@ export class Academy extends EventEmitter {
     this.snapshot = {
       ...this.snapshot,
       selected: session,
+      captureId: this.window?.id,
       events: this.windowEvents(session),
       lessons: this.store.lessons(session),
       eventCount: this.windowCount(session),
@@ -309,7 +312,8 @@ export class Academy extends EventEmitter {
             if (this.detector.observe(e)) this.pending = true;
             if (e.kind === 'completed') ended = true;
           }
-          if (fresh.length && !this.snapshot.lessons.length) this.pending = true;
+          if (fresh.length && !this.snapshot.lessons.some((l) => l.captureId === this.window?.id))
+            this.pending = true;
           if (fresh.length) {
             const sources = await this.collector.sources(selected, fresh);
             if (!current()) return;
@@ -327,8 +331,17 @@ export class Academy extends EventEmitter {
           const git = await this.git.collect(selected);
           if (!current()) return;
           this.snapshot.selected = git.session;
-          this.store.ingest(git.session, this.captureEvidence(git.events));
+          const changes = this.store.ingest(git.session, this.captureEvidence(git.events));
+          for (const event of changes) {
+            if (event.kind === 'diff') {
+              this.pending = true;
+              if (this.detector.stage === 'INVESTIGATING') this.detector.observe(event);
+            }
+          }
+          if (changes.length && !this.snapshot.lessons.some((l) => l.captureId === this.window?.id))
+            this.pending = true;
           this.snapshot.events = this.windowEvents(git.session);
+          this.snapshot.stage = this.detector.stage;
           this.lastGit = Date.now();
         }
         this.snapshot.eventCount = this.windowCount(selected);

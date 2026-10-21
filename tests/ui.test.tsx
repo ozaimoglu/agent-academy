@@ -4,7 +4,7 @@ import { render, cleanup } from 'ink-testing-library';
 import { OnboardingWizard } from '../src/ui/onboarding.js';
 import { defaultConfig, consentKey } from '../src/storage/config.js';
 import { renderDiagram } from '../src/ui/diagrams.js';
-import { workspace, rollout, row } from './helpers.js';
+import { workspace, rollout, row, event } from './helpers.js';
 import path from 'node:path';
 const pause = () => new Promise((r) => setTimeout(r, 40));
 afterEach(cleanup);
@@ -261,5 +261,48 @@ it('offers keyboard Start, Stop and panel Close without starting automatically',
     ui.unmount();
     await academy.stop();
     store.close();
+  }
+});
+it('shows a readable first explanation in LIVE while preserving the full diff in CODE', async () => {
+  const { AcademyTUI } = await import('../src/ui/app.js');
+  const { Academy } = await import('../src/core/academy.js');
+  const { LessonStore } = await import('../src/storage/store.js');
+  const { GitChangeTracker } = await import('../src/core/git.js');
+  const { d, root, sessions } = await workspace();
+  await rollout(sessions, root, 'one', row('event_msg', { type: 'task_complete' }));
+  const diff = event(
+    'diff',
+    'diff --git a/install.sh b/install.sh\n-npm ci\n+npm ci --include=dev',
+    { file: 'install.sh', origin: 'git' },
+  );
+  const git = vi
+    .spyOn(GitChangeTracker.prototype, 'collect')
+    .mockImplementation(async (session) => ({ session, events: [diff] }));
+  const config = defaultConfig();
+  config.onboarded = true;
+  const store = new LessonStore(path.join(d, 'state'));
+  const academy = new Academy(root, sessions, path.join(d, 'state'), config, store, {});
+  const ui = render(
+    <AcademyTUI academy={academy} configDir={path.join(d, 'config')} initialConfig={config} />,
+  );
+  try {
+    await pause();
+    ui.stdin.write('b');
+    await vi.waitFor(() => expect(academy.snapshot.lessons).toHaveLength(1));
+    await pause();
+    expect(ui.lastFrame()).toContain('Şu an ne oluyor?');
+    expect(ui.lastFrame()).toContain('Kodda ne değişti?');
+    expect(ui.lastFrame()).not.toContain('0 ders');
+    expect(ui.lastFrame()).not.toContain(diff.id);
+    expect(ui.lastFrame()).not.toContain('diff --git');
+    ui.stdin.write('3');
+    await pause();
+    expect(ui.lastFrame()).toContain('diff --git');
+    expect(ui.lastFrame()).toContain('--include=dev');
+  } finally {
+    ui.unmount();
+    await academy.stop();
+    store.close();
+    git.mockRestore();
   }
 });

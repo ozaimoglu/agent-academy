@@ -234,3 +234,38 @@ it('retains a reused source snapshot in each explicitly selected capture window'
     store.close();
   }
 });
+it('starts explaining the current task immediately instead of waiting for a future event', async () => {
+  const { academy, store } = await setup(task('Explain this ongoing task'));
+  try {
+    await academy.beginLearning();
+    await academy.settle();
+    expect(academy.snapshot.lessons).toHaveLength(1);
+    expect(academy.snapshot.lessons[0]?.title).toContain('ongoing task');
+    expect(academy.snapshot.lessons[0]?.walkthrough?.[0]?.body).toContain('ongoing task');
+    expect(academy.snapshot.lessons[0]?.captureId).toBe(academy.snapshot.captureId);
+  } finally {
+    await academy.stop();
+    store.close();
+  }
+});
+it('explains new Git changes without needing a new Codex message and avoids repeated explanations for unchanged code', async () => {
+  const { academy, store } = await setup();
+  const change = event('diff', '-before\n+after', { file: 'code.ts', origin: 'git' });
+  vi.spyOn(GitChangeTracker.prototype, 'collect').mockImplementation(async (session) => ({
+    session,
+    events: [change],
+  }));
+  try {
+    await academy.beginLearning();
+    await academy.settle();
+    expect(academy.snapshot.stage).toBe('IMPLEMENTING');
+    expect(academy.snapshot.lessons).toHaveLength(1);
+    expect(academy.snapshot.lessons[0]?.walkthrough?.[0]?.body).toContain('Önce: before');
+    await academy.tick();
+    await academy.settle();
+    expect(academy.snapshot.lessons).toHaveLength(1);
+  } finally {
+    await academy.stop();
+    store.close();
+  }
+});
