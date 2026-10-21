@@ -5,7 +5,7 @@ academy_node='node'
 if [[ -f "$academy_root/dist/node-executable" ]]; then
   IFS= read -r academy_node < "$academy_root/dist/node-executable"
   if [[ "$academy_node" != /* || ! -x "$academy_node" ]]; then
-    printf '%s\n' 'Agent Academy: Kurulumda kaydedilen Node bulunamadı. Kurulumu yeniden çalıştırın.' >&2
+    printf '%s\n' 'Agent Academy: The Node executable recorded at installation was not found. Reinstall Academy.' >&2
     exit 2
   fi
 fi

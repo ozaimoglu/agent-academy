@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { AcademyEvent, Checkpoint, Session, SessionAdapter } from '../core/types.js';
 import { canonical, hash } from '../core/privacy.js';
 import { SessionEventNormalizer } from './normalizer.js';
+import { conversationLanguage } from '../core/language.js';
 
 const BATCH = 1024 * 1024;
 export interface CodexCheckpoint extends Checkpoint {
@@ -36,7 +37,7 @@ export async function readJsonl(file: string, previous?: CodexCheckpoint) {
       if (bytesRead === BATCH) {
         cp.offset += bytesRead;
         cp.discarding = true;
-        warnings.push('1 MiB sınırını aşan JSONL satırı atlanıyor.');
+        warnings.push('Skipping a JSONL line larger than 1 MiB.');
       }
       return {
         records,
@@ -55,7 +56,7 @@ export async function readJsonl(file: string, previous?: CodexCheckpoint) {
       try {
         records.push(JSON.parse(line));
       } catch {
-        warnings.push('Bozuk tamamlanmış JSONL satırı atlandı.');
+        warnings.push('Skipped a malformed complete JSONL line.');
       }
     }
     cp.offset += last + 1;
@@ -70,14 +71,17 @@ export class CodexSessionAdapter implements SessionAdapter {
   constructor(private lookup?: (sessionId: string, callId: string) => string | undefined) {}
   /** Start at complete EOF, retaining only the latest unfinished task as context.
    * The bounded scan happens after the user explicitly starts learning. */
-  async tail(s: Session): Promise<{ checkpoint: CodexCheckpoint; task?: AcademyEvent }> {
+  async tail(
+    s: Session,
+    fallbackLanguage = 'en',
+  ): Promise<{ checkpoint: CodexCheckpoint; task?: AcademyEvent; language: string }> {
     const file = await open(s.file, 'r');
     try {
       const st = await file.stat();
       const header = Buffer.alloc(Math.min(st.size, BATCH));
       const { bytesRead } = await file.read(header, 0, header.length, 0);
       const firstEnd = header.subarray(0, bytesRead).indexOf(10);
-      if (firstEnd < 0) throw new Error('Codex oturum başlığı henüz tamamlanmadı.');
+      if (firstEnd < 0) throw new Error('The Codex session header is not complete yet.');
       const metadata = JSON.parse(header.subarray(0, firstEnd).toString('utf8'));
       if (
         metadata.type !== 'session_meta' ||
@@ -85,7 +89,7 @@ export class CodexSessionAdapter implements SessionAdapter {
         typeof metadata.payload?.cwd !== 'string' ||
         (await canonical(metadata.payload.cwd)) !== s.cwd
       )
-        throw new Error('Oturum dosyasının kimliği değişti; yeniden seçin.');
+        throw new Error('The session file identity changed; select it again.');
       const start = Math.max(0, st.size - BATCH);
       const buffer = Buffer.alloc(st.size - start);
       await file.read(buffer, 0, buffer.length, start);
@@ -98,12 +102,17 @@ export class CodexSessionAdapter implements SessionAdapter {
       };
       const normalizer = new SessionEventNormalizer(s.id);
       let task: AcademyEvent | undefined;
+      const userMessages: AcademyEvent[] = [];
       if (last >= 0) {
         const first = start ? buffer.indexOf(10) + 1 : 0;
         for (const line of buffer.subarray(first, last).toString('utf8').split('\n')) {
           try {
             for (const event of normalizer.normalize(JSON.parse(line))) {
-              if (event.kind === 'task') task = event;
+              if (event.kind === 'task') {
+                task = event;
+                userMessages.push(event);
+                if (userMessages.length > 8) userMessages.shift();
+              }
               if (
                 event.kind === 'completed' ||
                 (event.kind === 'error' && /abort|interrupt|iptal/i.test(event.text))
@@ -116,7 +125,7 @@ export class CodexSessionAdapter implements SessionAdapter {
         }
       }
       checkpoint.turnId = normalizer.turnId;
-      return { checkpoint, task };
+      return { checkpoint, task, language: conversationLanguage(userMessages, fallbackLanguage) };
     } finally {
       await file.close();
     }
@@ -211,9 +220,7 @@ export class CodexSessionAdapter implements SessionAdapter {
           !row.payload?.cwd ||
           (await canonical(row.payload.cwd)) !== s.cwd)
       ) {
-        throw new Error(
-          'Oturum dosyasının kimliği değişti; yeniden keşif veya elle seçim gerekli.',
-        );
+        throw new Error('The session file identity changed; rediscover or select it manually.');
       }
     }
     const normalizer = new SessionEventNormalizer(s.id, (id) => this.lookup?.(s.id, id));
@@ -234,15 +241,18 @@ export function matchSessions(
     const exact = choices.find((s) =>
       identity.kind === 'id' ? s.id === identity.value : s.file === identity.value,
     );
-    if (exact) return { selected: exact, choices, reason: 'Herdr oturum kimliği' };
-    return { choices, reason: 'Herdr oturum kimliği henüz bulunamadı; elle seçebilirsiniz.' };
+    if (exact) return { selected: exact, choices, reason: 'Herdr session identity' };
+    return {
+      choices,
+      reason: 'The Herdr session identity is not available yet; select a session manually.',
+    };
   }
   if (choices.length === 1)
-    return { selected: choices[0], choices, reason: 'Tek eşleşen proje oturumu' };
+    return { selected: choices[0], choices, reason: 'Single matching project session' };
   return {
     choices,
     reason: choices.length
-      ? 'Birden fazla oturum var; seçim gerekli.'
-      : 'Bu proje için Codex oturumu bekleniyor.',
+      ? 'Multiple sessions found; selection required.'
+      : 'Waiting for a Codex session for this project.',
   };
 }

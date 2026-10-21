@@ -55,7 +55,7 @@ export async function checkCodex(
   credentialStore: ProviderConfig['codexCredentialStore'] = 'auto',
 ): Promise<string> {
   if (!['darwin', 'linux'].includes(process.platform))
-    throw new Error('Codex öğretici bu sürümde yalnızca macOS ve Linux destekler.');
+    throw new Error('The Codex teacher currently supports macOS and Linux only.');
   const options = { env: codexEnvironment(env), timeout: 5000, maxBuffer: 65536, signal };
   let version: string;
   let help: string;
@@ -71,7 +71,9 @@ export async function checkCodex(
     login = status.stdout + status.stderr;
   } catch {
     if (signal?.aborted) throw signal.reason;
-    throw new Error('Codex bulunamadı veya giriş yok. Codex CLI kurun ve codex login çalıştırın.');
+    throw new Error(
+      'Codex was not found or is not logged in. Install Codex CLI and run codex login.',
+    );
   }
   if (
     !/^codex-cli 0\.163\.\d+$/.test(version) ||
@@ -84,11 +86,11 @@ export async function checkCodex(
     ].every((flag) => help.includes(flag))
   )
     throw new Error(
-      'Güvenli öğretici Codex CLI 0.163.x gerektirir; kurulu sürüm henüz doğrulanmadı.',
+      'The teacher requires Codex CLI 0.163.x; the installed version has not been verified.',
     );
   if (!/^Logged in using ChatGPT(?:\s|$)/m.test(login))
     throw new Error(
-      'Codex kotası için ChatGPT girişi gerekli. codex login ile giriş yapın; API anahtarına geçilmedi.',
+      'Codex quota requires ChatGPT login. Run codex login; no API key fallback was used.',
     );
   return version;
 }
@@ -179,7 +181,7 @@ export class CodexCLIProvider implements LLMProvider {
     private executable = env.ACADEMY_CODEX_BIN || 'codex',
   ) {
     validateProvider(config);
-    this.name = `codex:${config.model.trim() || 'CLI varsayılanı'} · ChatGPT kotası`;
+    this.name = `codex:${config.model.trim() || 'CLI default'} · ChatGPT quota`;
   }
   async explain(system: string, context: string, signal?: AbortSignal): Promise<ModelReply> {
     validateProvider(this.config);
@@ -188,7 +190,7 @@ export class CodexCLIProvider implements LLMProvider {
     // question intact instead of cutting a serialized object at an arbitrary character.
     if (system.length > 40000 || context.length > this.config.contextChars + 100000)
       throw new Error(
-        'Codex öğretici bağlam sınırı aşıldı. Daha küçük bir ders veya kanıt bütçesi seçin.',
+        'The Codex teacher context limit was exceeded. Choose a smaller lesson or evidence budget.',
       );
     await checkCodex(this.executable, this.env, signal, this.config.codexCredentialStore);
     const directory = await realpath(
@@ -237,11 +239,10 @@ export class CodexCLIProvider implements LLMProvider {
         killTimer.unref();
       };
       const timeout = setTimeout(
-        () =>
-          fail(new Error('Codex açıklama zaman aşımı. Sıklığı veya zaman bütçesini ayarlayın.')),
+        () => fail(new Error('The Codex explanation timed out. Adjust the frequency or timeout.')),
         this.config.codexTimeoutSeconds * 1000,
       );
-      const abort = () => fail(new Error('Codex açıklama isteği iptal edildi.'));
+      const abort = () => fail(new Error('The Codex explanation request was cancelled.'));
       signal?.addEventListener('abort', abort, { once: true });
       if (signal?.aborted) abort();
       const record = (line: string) => {
@@ -250,11 +251,11 @@ export class CodexCLIProvider implements LLMProvider {
         try {
           row = JSON.parse(line);
         } catch {
-          fail(new Error('Codex geçersiz JSONL döndürdü.'));
+          fail(new Error('Codex returned invalid JSONL.'));
           return;
         }
         if (!row || typeof row !== 'object' || Array.isArray(row)) {
-          fail(new Error('Codex geçersiz JSONL olay biçimi döndürdü.'));
+          fail(new Error('Codex returned an invalid JSONL event shape.'));
           return;
         }
         if (row.type === 'item.started' || row.type === 'item.completed') {
@@ -272,13 +273,15 @@ export class CodexCLIProvider implements LLMProvider {
               return;
             fail(
               new Error(
-                'Codex açıklama oturumunda hata bildirdi. CLI girişini, bağlantıyı ve /status bilgisini kontrol edin.',
+                'Codex reported an explanation session error. Check CLI login, connectivity and /status.',
               ),
             );
             return;
           }
           if (!item || !['agent_message', 'reasoning'].includes(item.type)) {
-            fail(new Error('Codex öğretici araç çağırmayı denedi; açıklama durduruldu.'));
+            fail(
+              new Error('The Codex teacher attempted a tool call; the explanation was stopped.'),
+            );
             return;
           }
           // Never retain reasoning or commentary as the answer.
@@ -296,8 +299,8 @@ export class CodexCLIProvider implements LLMProvider {
           fail(
             new Error(
               /rate.?limit|usage.?limit|quota|429|limit.*reach/i.test(message)
-                ? 'Codex kullanım kotası veya hız limiti doldu. /status ile kontrol edin; otomatik tekrar veya ücretli API geçişi yapılmadı.'
-                : 'Codex açıklama isteği başarısız. Codex girişini, bağlantıyı ve /status bilgisini kontrol edin.',
+                ? 'Codex quota or rate limit reached. Check /status; no automatic retry or paid API fallback was used.'
+                : 'The Codex explanation request failed. Check login, connectivity and /status.',
             ),
           );
         }
@@ -314,34 +317,36 @@ export class CodexCLIProvider implements LLMProvider {
       child.stdout.on('data', (data: Buffer) => {
         bytes += data.length;
         if (bytes > 4 * LIMIT) {
-          fail(new Error('Codex çıktı boyutu sınırını aştı.'));
+          fail(new Error('Codex exceeded the output size limit.'));
           return;
         }
         pending += decoder.write(data);
         let end: number;
         while ((end = pending.indexOf('\n')) >= 0) {
           if (end > LIMIT) {
-            fail(new Error('Codex JSONL satır sınırını aştı.'));
+            fail(new Error('Codex exceeded the JSONL line limit.'));
             return;
           }
           record(pending.slice(0, end));
           pending = pending.slice(end + 1);
         }
-        if (Buffer.byteLength(pending) > LIMIT) fail(new Error('Codex JSONL satır sınırını aştı.'));
+        if (Buffer.byteLength(pending) > LIMIT)
+          fail(new Error('Codex exceeded the JSONL line limit.'));
       });
       // Classify only; never persist/echo stderr, which can contain context or credentials.
       child.stderr.on('data', (chunk: Buffer) => {
         stderrTail = (stderrTail + chunk.toString('utf8')).slice(-8192);
         blockedByOS ||= /operation not permitted|permission denied/i.test(stderrTail);
       });
-      child.stdin.on('error', () => fail(new Error('Codex istek girişi kapandı.')));
-      child.on('error', () => fail(new Error('Codex öğretici işlemi başlatılamadı.')));
+      child.stdin.on('error', () => fail(new Error('Codex request input closed.')));
+      child.on('error', () => fail(new Error('Could not start the Codex teacher process.')));
       child.on('close', (code) => {
         clearTimeout(timeout);
         if (killTimer) clearTimeout(killTimer);
         signal?.removeEventListener('abort', abort);
         pending += decoder.end();
-        if (Buffer.byteLength(pending) > LIMIT) fail(new Error('Codex JSONL satır sınırını aştı.'));
+        if (Buffer.byteLength(pending) > LIMIT)
+          fail(new Error('Codex exceeded the JSONL line limit.'));
         else if (pending.trim()) record(pending);
         if (failure) {
           reject(failure);
@@ -351,8 +356,8 @@ export class CodexCLIProvider implements LLMProvider {
           reject(
             new Error(
               blockedByOS
-                ? 'İşletim sistemi veya sandbox Codex öğreticiyi başlatmayı engelledi. Normal terminalde npm run smoke:codex ile kontrol edin.'
-                : 'Codex açıklamayı tamamlamadı. CLI sürümünü, girişini ve /status bilgisini kontrol edin.',
+                ? 'The OS or sandbox prevented the Codex teacher from starting. Run npm run smoke:codex in a normal terminal.'
+                : 'Codex did not finish the explanation. Check CLI version, login and /status.',
             ),
           );
           return;

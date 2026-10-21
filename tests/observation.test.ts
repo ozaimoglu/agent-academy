@@ -255,7 +255,7 @@ it('does not seed a completed historical task and verifies metadata before taili
   const selected = (await adapter.discover(sessions))[0]!;
   expect((await adapter.tail(selected)).task).toBeUndefined();
   await writeFile(file, row('session_meta', { id: 'replacement', cwd: root }));
-  await expect(adapter.tail(selected)).rejects.toThrow('kimliği');
+  await expect(adapter.tail(selected)).rejects.toThrow('identity');
 });
 it('rediscovers changed metadata when a rollout filename is replaced', async () => {
   const { root, sessions } = await workspace();
@@ -279,5 +279,5 @@ it('refuses to ingest a replaced file into the previously selected session', asy
   const adapter = new CodexSessionAdapter();
   const selected = (await adapter.discover(sessions))[0]!;
   await writeFile(file, row('session_meta', { id: 'different-session', cwd: root, source: 'cli' }));
-  await expect(adapter.read(selected)).rejects.toThrow('kimliği değişti');
+  await expect(adapter.read(selected)).rejects.toThrow('identity changed');
 });

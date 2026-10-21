@@ -18,7 +18,7 @@ export interface HerdrPane {
 export type HerdrCall = (args: string[]) => Promise<any>;
 export function createHerdrCall(env: NodeJS.ProcessEnv = process.env): HerdrCall {
   return async (args) => {
-    if (env.HERDR_ENV !== '1') throw new Error('Bu işlem Herdr içinde çalıştırılmalı.');
+    if (env.HERDR_ENV !== '1') throw new Error('This action must run inside Herdr.');
     try {
       const result = await exec(env.HERDR_BIN_PATH ?? 'herdr', args, {
         env,
@@ -29,11 +29,11 @@ export function createHerdrCall(env: NodeJS.ProcessEnv = process.env): HerdrCall
       if (response.error)
         throw new Error(
           [response.error.code, response.error.message].filter(Boolean).join(': ') ||
-            'Herdr API hatası',
+            'Herdr API error',
         );
       return response.result;
     } catch (e) {
-      let reason = e instanceof Error ? e.message.slice(0, 160) : 'bağlantı yok';
+      let reason = e instanceof Error ? e.message.slice(0, 160) : 'no connection';
       try {
         const body = JSON.parse((e as { stderr?: string }).stderr ?? '');
         if (body.error?.code)
@@ -42,7 +42,7 @@ export function createHerdrCall(env: NodeJS.ProcessEnv = process.env): HerdrCall
         /* Non-JSON transport failure. */
       }
       throw new Error(
-        `Herdr çağrısı başarısız (${args.slice(0, 2).join(' ')}): ${safeText(reason, 600)}`,
+        `Herdr call failed (${args.slice(0, 2).join(' ')}): ${safeText(reason, 600)}`,
       );
     }
   };
@@ -78,7 +78,7 @@ export async function closeAcademyPane(
   call: HerdrCall = createHerdrCall(env),
 ) {
   if (env.HERDR_ENV !== '1' || !env.HERDR_PANE_ID || !env.HERDR_WORKSPACE_ID)
-    throw new Error('Academy pane bağlamı gerekli.');
+    throw new Error('Academy pane context is required.');
   const pane = (await call(['pane', 'get', env.HERDR_PANE_ID])).pane as HerdrPane | undefined;
   const entry = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../cli.js');
   if (
@@ -87,7 +87,7 @@ export async function closeAcademyPane(
     pane.workspace_id !== env.HERDR_WORKSPACE_ID ||
     !(await owns(call, pane.pane_id, entry))
   )
-    throw new Error('Bu pane Academy olarak doğrulanamadı; kapatılmadı.');
+    throw new Error('This pane could not be verified as Academy; it was not closed.');
   await call(['plugin', 'pane', 'close', pane.pane_id]);
 }
 export async function pluginAction(
@@ -95,14 +95,14 @@ export async function pluginAction(
   env: NodeJS.ProcessEnv = process.env,
   call: HerdrCall = createHerdrCall(env),
 ) {
-  if (!['open', 'close', 'toggle'].includes(action)) throw new Error('Geçersiz plugin eylemi.');
+  if (!['open', 'close', 'toggle'].includes(action)) throw new Error('Invalid plugin action.');
   if (
     env.HERDR_ENV !== '1' ||
     !env.HERDR_PANE_ID ||
     !env.HERDR_WORKSPACE_ID ||
     !env.HERDR_SOCKET_PATH
   )
-    throw new Error('Herdr pane/workspace/socket bağlamı gerekli.');
+    throw new Error('Herdr pane/workspace/socket context is required.');
   const paths = academyPaths(env);
   const config = await loadConfig(paths.config);
   const entry = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../cli.js');
@@ -121,7 +121,7 @@ export async function pluginAction(
         await rm(lock, { recursive: true, force: true });
         continue;
       }
-      if (tries > 50) throw new Error('Başka bir Academy eylemi sürüyor.');
+      if (tries > 50) throw new Error('Another Academy action is in progress.');
       await new Promise((r) => setTimeout(r, 100));
     }
   }
@@ -137,14 +137,14 @@ export async function pluginAction(
     const paneResult = await call(['pane', 'get', target]);
     const pane = paneResult.pane as HerdrPane;
     if (!pane || pane.workspace_id !== env.HERDR_WORKSPACE_ID)
-      throw new Error('Hedef pane bu workspace içinde değil.');
+      throw new Error('The target pane is not in this workspace.');
     const existing = records.find((r) => r.target === target && r.socket === env.HERDR_SOCKET_PATH);
     if (existing) {
       const list = await call(['pane', 'list', '--workspace', pane.workspace_id]);
       const live = (list.panes ?? []).some((p: HerdrPane) => p.pane_id === existing.panel);
       if (live) {
         if (!(await owns(call, existing.panel, entry)))
-          throw new Error('Kayıtlı pane Academy olarak doğrulanamadı; kapatılmadı.');
+          throw new Error('The recorded pane could not be verified as Academy; it was not closed.');
         if (action === 'open') return;
         try {
           await call(['plugin', 'pane', 'close', existing.panel]);
@@ -184,7 +184,7 @@ export async function pluginAction(
       '--no-focus',
     ]);
     const panel = response.plugin_pane?.pane as HerdrPane | undefined;
-    if (!panel?.pane_id) throw new Error('Herdr yeni Academy pane kimliğini döndürmedi.');
+    if (!panel?.pane_id) throw new Error('Herdr did not return the new Academy pane ID.');
     records.push({
       target,
       panel: panel.pane_id,

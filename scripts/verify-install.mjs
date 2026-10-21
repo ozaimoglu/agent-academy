@@ -16,8 +16,7 @@ async function artifacts(directory, prefix = '') {
     (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
   )) {
     const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
-    if (entry.isSymbolicLink())
-      throw new Error('Derleme çıktısında sembolik bağlantı kabul edilmiyor.');
+    if (entry.isSymbolicLink()) throw new Error('Symbolic links are not allowed in build output.');
     if (entry.isDirectory()) Object.assign(hashes, await artifacts(directory, relative));
     else if (entry.isFile() && entry.name.endsWith('.js'))
       hashes[relative] = digest(await readFile(path.join(directory, relative)));
@@ -43,14 +42,14 @@ async function main() {
   });
   if (values.help) {
     console.log(
-      'node scripts/verify-install.mjs [--dist PATH] [--record]\nVarsayılan: kurulum kaydını ve çevrimdışı hattı doğrula. --record: yeni derleme kaydı oluştur.',
+      'node scripts/verify-install.mjs [--dist PATH] [--record]\nDefault: verify the installation receipt and offline pipeline. --record: create a new build receipt.',
     );
     return;
   }
   const dist = path.resolve(values.dist ?? path.join(root, 'dist'));
   const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
   const hashes = await artifacts(dist);
-  if (!hashes['cli.js']) throw new Error('dist/cli.js eksik. Kurulum scriptini çalıştırın.');
+  if (!hashes['cli.js']) throw new Error('dist/cli.js is missing. Run the installer.');
   const lockfileSha256 = digest(await readFile(path.join(root, 'package-lock.json')));
   const manifestSha256 = digest(await readFile(path.join(root, 'herdr-plugin.toml')));
   let runtimeExecutable = process.execPath;
@@ -60,7 +59,7 @@ async function main() {
       saved = JSON.parse(await readFile(path.join(dist, 'install-info.json'), 'utf8'));
     } catch {
       throw new Error(
-        'Geçerli kurulum kaydı yok. ./scripts/install.sh ile doğrulanmış bir derleme oluşturun.',
+        'No valid installation receipt. Run ./scripts/install.sh to create a verified build.',
       );
     }
     if (
@@ -71,11 +70,11 @@ async function main() {
       JSON.stringify(saved.artifacts) !== JSON.stringify(hashes)
     )
       throw new Error(
-        'Kurulum bütünlüğü eşleşmiyor. Kaynaklar veya derleme değişmiş; kurulumu yeniden çalıştırın.',
+        'Installation integrity mismatch. Sources or build output changed; run the installer again.',
       );
     const executable = (await readFile(path.join(dist, 'node-executable'), 'utf8')).trim();
     if (executable !== saved.runtime?.executable || !path.isAbsolute(executable))
-      throw new Error('Kaydedilen Node çalıştırıcısı tutarsız.');
+      throw new Error('The recorded Node executable is inconsistent.');
     await access(executable, constants.X_OK);
     runtimeExecutable = executable;
   }
@@ -85,7 +84,7 @@ async function main() {
     const database = new DatabaseSync(':memory:');
     database.exec('CREATE TABLE health (ok INTEGER); INSERT INTO health VALUES (1);');
     if (database.prepare('SELECT ok FROM health').get()?.ok !== 1)
-      throw new Error('SQLite kontrolü başarısız.');
+      throw new Error('SQLite check failed.');
     database.close();
     const options = {
       cwd: root,
@@ -99,7 +98,7 @@ async function main() {
       options,
     );
     if (!help.stdout.includes('Agent Academy') || !help.stdout.includes('--headless'))
-      throw new Error('CLI yardım sözleşmesi doğrulanamadı.');
+      throw new Error('CLI help contract verification failed.');
     const demo = await exec(
       runtimeExecutable,
       ['--disable-warning=ExperimentalWarning', path.join(dist, 'cli.js'), '--demo', '--headless'],
@@ -108,15 +107,15 @@ async function main() {
     if (
       !demo.stdout.includes('# Agent Academy') ||
       !demo.stdout.includes('DEMO FIXTURE') ||
-      !demo.stdout.includes('Gerçek test sonuçları')
+      !demo.stdout.includes('Actual test results')
     )
-      throw new Error('Çevrimdışı gözlem/öğretim/rapor hattı doğrulanamadı.');
+      throw new Error('Offline observation/teaching/report verification failed.');
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
   if (values.record) {
     if (!path.isAbsolute(process.execPath) || /[\r\n]/.test(process.execPath))
-      throw new Error('Node çalıştırıcı yolu kaydedilemiyor.');
+      throw new Error('Cannot record the Node executable path.');
     const record = {
       formatVersion: 1,
       name: pkg.name,
@@ -139,17 +138,17 @@ async function main() {
     await rename(temporaryRecord, path.join(dist, 'install-info.json'));
     await writeFile(path.join(dist, 'node-executable'), process.execPath + '\n', { mode: 0o600 });
   }
-  console.log(`  DOĞRULANDI · Academy ${pkg.version} · SQLite / CLI / çevrimdışı uçtan uca hat`);
-  console.log('  Dış servise istek ve kullanıcı projesi okuması yapılmadı.');
+  console.log(`  VERIFIED · Academy ${pkg.version} · SQLite / CLI / offline pipeline`);
+  console.log('  No external requests or user project reads were made.');
 }
 main().catch((error) => {
   // Do not echo child stderr: environments and diagnostics can contain credentials.
   console.error(
-    'DOĞRULAMA: ' +
+    'VERIFICATION: ' +
       (error.code === 'ENOENT'
-        ? 'Gerekli kurulum dosyası bulunamadı.'
+        ? 'A required installation file was not found.'
         : error.stdout !== undefined
-          ? 'Uygulama kabul kontrolünü geçemedi; dist ve Node sürümünü kontrol edin.'
+          ? 'Application acceptance failed; check dist and the Node version.'
           : error.message),
   );
   process.exitCode = 5;

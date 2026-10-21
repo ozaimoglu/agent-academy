@@ -11,8 +11,10 @@ import { createProvider } from '../providers/openai-compatible.js';
 import { hash, safeText } from './privacy.js';
 import { generateReport, exportReport } from './report.js';
 import { associatedPane, createHerdrCall } from '../integration/herdr.js';
+import { conversationLanguage } from './language.js';
 
 export interface AcademySnapshot {
+  language?: string;
   learning: 'paused' | 'starting' | 'active' | 'finishing';
   captureId?: string;
   sessions: Session[];
@@ -34,7 +36,7 @@ export class Academy extends EventEmitter {
     events: [],
     lessons: [],
     stage: 'INVESTIGATING',
-    status: 'Codex oturumu aranıyor…',
+    status: 'Looking for a Codex session…',
     busy: false,
     eventCount: 0,
   };
@@ -58,7 +60,13 @@ export class Academy extends EventEmitter {
   private questionBusy = false;
   private identity?: { kind: string; value: string };
   private captureCheckpoint?: CodexCheckpoint;
-  private window?: { after: number; started: string; task?: AcademyEvent; id: string };
+  private window?: {
+    after: number;
+    started: string;
+    task?: AcademyEvent;
+    id: string;
+    language?: string;
+  };
   private controlsGeneration = 0;
   constructor(
     readonly root: string,
@@ -108,9 +116,9 @@ export class Academy extends EventEmitter {
     this.timer = setInterval(() => void this.tick(), 1000);
   }
   async beginLearning({ replay = false } = {}) {
-    if (this.stopped) throw new Error('Academy kapatıldı.');
+    if (this.stopped) throw new Error('Academy is closed.');
     if (this.snapshot.learning !== 'paused') return;
-    if (this.snapshot.busy) throw new Error('Mevcut isteğin tamamlanmasını bekleyin.');
+    if (this.snapshot.busy) throw new Error('Wait for the current request to finish.');
     const controls = this.controlsGeneration;
     while (this.polling && !this.stopped) await new Promise((resolve) => setTimeout(resolve, 10));
     // Discovery is local and never starts capture or a model request.
@@ -119,18 +127,19 @@ export class Academy extends EventEmitter {
       return;
     const selected = this.snapshot.selected;
     if (!selected)
-      throw new Error('Önce Codex oturumunu başlatın; birden fazla varsa C ile seçin.');
+      throw new Error('Start a Codex session first; press C to choose if there is more than one.');
     const generation = ++this.generation;
     this.snapshot.learning = 'starting';
-    this.snapshot.status = 'Seçili görev için öğrenme başlatılıyor…';
+    this.snapshot.status = 'Starting learning for the selected task…';
     this.emitChange();
     try {
-      const tail = replay ? undefined : await this.adapter.tail(selected);
+      const tail = replay ? undefined : await this.adapter.tail(selected, this.snapshot.language);
       if (generation !== this.generation || this.stopped) return;
       this.window = {
         after: replay ? 0 : this.store.eventCursor(selected),
         started: new Date().toISOString(),
         task: tail?.task,
+        language: tail?.language,
         id: hash(`${selected.id}|${Date.now()}|${generation}`),
       };
       this.store.setMeta('capture:' + this.store.key(selected), JSON.stringify(this.window));
@@ -146,21 +155,21 @@ export class Academy extends EventEmitter {
         this.pending = true;
       }
       this.snapshot.captureId = this.window.id;
+      this.snapshot.language = this.window.language;
       this.snapshot.events = this.windowEvents(selected);
       this.snapshot.eventCount = this.windowCount(selected);
       this.snapshot.stage = 'INVESTIGATING';
       this.snapshot.report = undefined;
       this.snapshot.learning = 'active';
-      this.snapshot.status = 'Öğrenme açık · bu görev / sonraki gözlenen tur';
+      this.snapshot.status = 'Learning active · current task / next observed turn';
       this.emitChange();
       await this.tick();
     } catch (error) {
-      if (generation === this.generation)
-        this.pauseLearning('Başlatılamadı; B ile tekrar deneyin.');
+      if (generation === this.generation) this.pauseLearning('Could not start; press B to retry.');
       throw error;
     }
   }
-  pauseLearning(message = 'Durduruldu · yeniden öğrenmek için B Başlat.') {
+  pauseLearning(message = 'Stopped · press B to start learning again.') {
     this.controlsGeneration++;
     this.controller?.abort();
     this.generation++;
@@ -196,13 +205,13 @@ export class Academy extends EventEmitter {
       : events;
   }
   setConfig(config: Config) {
-    this.pauseLearning('Ayarlar kaydedildi · B ile öğrenmeyi başlat.');
+    this.pauseLearning('Settings saved · press B to start learning.');
     this.config = config;
     this.engine = this.makeEngine();
     this.emitChange();
   }
   async stop() {
-    this.pauseLearning('Academy kapatılıyor.');
+    this.pauseLearning('Closing Academy.');
     this.stopped = true;
     if (this.timer) clearInterval(this.timer);
     this.controller?.abort();
@@ -210,13 +219,13 @@ export class Academy extends EventEmitter {
     while (this.polling || this.questionBusy) await new Promise((r) => setTimeout(r, 10));
   }
   async select(session: Session, manual = true) {
-    if (session.cwd !== this.root) throw new Error('Oturum proje bağlamıyla eşleşmiyor.');
+    if (session.cwd !== this.root) throw new Error('The session does not match this project.');
     if (this.snapshot.selected?.id === session.id) {
       this.manual = manual;
       return;
     }
     if (manual || this.snapshot.learning !== 'paused' || this.snapshot.busy)
-      this.pauseLearning('Oturum seçildi · B ile öğrenmeyi başlat.');
+      this.pauseLearning('Session selected · press B to start learning.');
     this.controller?.abort();
     this.generation++;
     this.manual = manual;
@@ -229,6 +238,7 @@ export class Academy extends EventEmitter {
       ...this.snapshot,
       selected: session,
       captureId: this.window?.id,
+      language: this.window?.language,
       events: this.windowEvents(session),
       lessons: this.store.lessons(session),
       eventCount: this.windowCount(session),
@@ -239,7 +249,7 @@ export class Academy extends EventEmitter {
     this.snapshot.stage = this.detector.stage;
     this.lastGit = 0;
     this.lastRequest = Number(this.store.getMeta('request:' + this.store.key(session)) ?? 0);
-    this.snapshot.status = `Hazır · ${session.id.slice(0, 12)} · B Başlat`;
+    this.snapshot.status = `Ready · ${session.id.slice(0, 12)} · B Start`;
     this.emitChange();
   }
   async tick() {
@@ -252,8 +262,7 @@ export class Academy extends EventEmitter {
             const pane = await associatedPane(createHerdrCall(this.env), this.env);
             this.identity = pane?.agent_session?.agent === 'codex' ? pane.agent_session : undefined;
           } catch {
-            this.snapshot.warning =
-              'Herdr bağlantısı kesildi; seçili dosya yerel olarak izleniyor.';
+            this.snapshot.warning = 'Herdr disconnected; following the selected file locally.';
           }
         }
         const sessions = await this.adapter.discover(this.sessionRoot);
@@ -345,15 +354,20 @@ export class Academy extends EventEmitter {
           this.lastGit = Date.now();
         }
         this.snapshot.eventCount = this.windowCount(selected);
+        this.snapshot.language = conversationLanguage(this.snapshot.events, this.window?.language);
+        if (this.window && this.window.language !== this.snapshot.language) {
+          this.window.language = this.snapshot.language;
+          this.store.setMeta('capture:' + this.store.key(selected), JSON.stringify(this.window));
+        }
         if (nextTask) {
-          this.pauseLearning('Yeni görev görüldü · öğrenmek için yeniden B Başlat.');
+          this.pauseLearning('New task detected · press B to start learning again.');
           await this.export();
           return;
         }
         if (ended) {
           this.snapshot.stage = 'COMPLETED';
           this.snapshot.learning = 'finishing';
-          this.snapshot.status = 'Tur tamamlandı · son değerlendirme hazırlanıyor.';
+          this.snapshot.status = 'Turn completed · preparing the final debrief.';
           this.pending = true;
           await this.export();
           if (generation !== this.generation || this.stopped) return;
@@ -375,16 +389,16 @@ export class Academy extends EventEmitter {
       }
       this.emitChange();
     } catch (e) {
-      this.snapshot.warning = safeText(e instanceof Error ? e.message : 'Gözlem hatası', 300);
+      this.snapshot.warning = safeText(e instanceof Error ? e.message : 'Observation error', 300);
       this.emitChange();
     } finally {
       this.polling = false;
     }
   }
   requestLesson() {
-    if (this.snapshot.busy) throw new Error('Mevcut açıklama tamamlanınca tekrar deneyin.');
+    if (this.snapshot.busy) throw new Error('Try again once the current explanation is ready.');
     if (!this.snapshot.selected || !this.snapshot.events.length)
-      throw new Error('Önce B ile seçtiğiniz görevi gözlemleyin.');
+      throw new Error('Press B to observe your selected task first.');
     this.pending = true;
     this.manualPending = true;
     this.schedule(true);
@@ -417,6 +431,7 @@ export class Academy extends EventEmitter {
           events,
           this.snapshot.lessons.filter((l) => !this.window || l.captureId === this.window.id),
           signal,
+          this.snapshot.language,
         );
         if (generation !== this.generation || this.stopped) return;
         lesson.id = hash(this.store.key(s) + '|' + (this.window?.id ?? '') + '|' + lesson.id);
@@ -444,7 +459,7 @@ export class Academy extends EventEmitter {
     this.manualPending = false;
     this.captureCheckpoint = undefined;
     this.snapshot.learning = 'paused';
-    this.snapshot.status = 'Tur tamamlandı · sonraki iş için B Başlat.';
+    this.snapshot.status = 'Turn completed · press B for the next task.';
   }
   async settle() {
     await this.work;
@@ -458,8 +473,8 @@ export class Academy extends EventEmitter {
   }
   async ask(l: Lesson, text: string): Promise<Question> {
     if (this.questionBusy || this.snapshot.busy)
-      throw new Error('Mevcut açıklama tamamlanınca tekrar deneyin.');
-    if (!text.trim()) throw new Error('Bir soru yazın.');
+      throw new Error('Try again once the current explanation is ready.');
+    if (!text.trim()) throw new Error('Enter a question.');
     this.questionBusy = true;
     this.snapshot.busy = true;
     const controller = new AbortController();
@@ -474,7 +489,7 @@ export class Academy extends EventEmitter {
         controller.signal,
       );
       if (generation !== this.generation || this.stopped)
-        throw new Error('Oturum değişti; yanıt kaydedilmedi.');
+        throw new Error('The session changed; the answer was not saved.');
       this.store.question(q);
       return q;
     } finally {
@@ -485,7 +500,7 @@ export class Academy extends EventEmitter {
   }
   report() {
     const s = this.snapshot.selected;
-    if (!s) return 'Henüz seçili oturum yok.';
+    if (!s) return 'No session selected yet.';
     const events = this.windowEvents(s, 3000);
     const lessons = this.store
       .lessons(s, 200)
@@ -500,7 +515,7 @@ export class Academy extends EventEmitter {
   }
   async export() {
     const s = this.snapshot.selected;
-    if (!s) throw new Error('Önce bir Codex oturumu seçin.');
+    if (!s) throw new Error('Select a Codex session first.');
     const captureId = this.window?.id;
     const file = await exportReport(this.stateDir, s, this.report(), captureId);
     if (this.snapshot.selected?.id === s.id && this.window?.id === captureId)

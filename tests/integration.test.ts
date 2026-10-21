@@ -162,7 +162,7 @@ it('refuses cross-workspace control and cannot operate from outside Herdr', asyn
   };
   const call = vi.fn(async () => ({ pane: { workspace_id: 'w2' } }));
   await expect(pluginAction('open', env, call)).rejects.toThrow('workspace');
-  await expect(pluginAction('open', {}, call)).rejects.toThrow('bağlamı');
+  await expect(pluginAction('open', {}, call)).rejects.toThrow('context');
   expect(call).toHaveBeenCalledTimes(1);
 });
 it('retains the current task when the bounded event window advances', async () => {
@@ -294,7 +294,7 @@ it('writes an evidence report on completion even when automatic model analysis i
     await academy.beginLearning({ replay: true });
     expect(academy.snapshot.lessons).toHaveLength(0);
     expect(academy.snapshot.report).toBeTruthy();
-    expect(await readFile(academy.snapshot.report!, 'utf8')).toContain('Gerçek test sonuçları');
+    expect(await readFile(academy.snapshot.report!, 'utf8')).toContain('Actual test results');
   } finally {
     await academy.stop();
     store.close();

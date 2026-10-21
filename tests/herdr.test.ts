@@ -71,7 +71,7 @@ it('refuses to close a coding pane or a pane in another workspace', async () => 
     };
     await expect(
       closeAcademyPane({ HERDR_ENV: '1', HERDR_PANE_ID: 'w1:p1', HERDR_WORKSPACE_ID: 'w1' }, call),
-    ).rejects.toThrow('doğrulanamadı');
+    ).rejects.toThrow('could not be verified');
     expect(calls.some((args) => args.includes('close'))).toBe(false);
   }
 });

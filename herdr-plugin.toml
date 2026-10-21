@@ -3,7 +3,7 @@ name = "Agent Academy"
 version = "0.1.0"
 min_herdr_version = "0.9.3"
 platforms = ["linux", "macos"]
-description = "Codex çalışmalarını yerel, kanıta dayalı mühendislik derslerine dönüştürür."
+description = "Turns Codex work into local, evidence-backed engineering lessons."
 
 [[build]]
 command = ["bash", "scripts/install.sh", "--build-only"]
@@ -16,30 +16,30 @@ command = ["scripts/academy.sh", "--pane"]
 
 [[actions]]
 id = "open"
-title = "Academy: paneli aç (beklemede)"
+title = "Academy: open panel (standby)"
 contexts = ["pane", "workspace"]
 command = ["scripts/academy.sh", "--action", "open"]
 
 [[actions]]
 id = "close"
-title = "Academy: paneli kapat"
+title = "Academy: close panel"
 contexts = ["pane", "workspace"]
 command = ["scripts/academy.sh", "--action", "close"]
 
 [[actions]]
 id = "toggle"
-title = "Academy: paneli aç / kapat"
+title = "Academy: toggle panel"
 contexts = ["pane", "workspace"]
 command = ["scripts/academy.sh", "--action", "toggle"]
 
 [[actions]]
 id = "doctor"
-title = "Academy: kurulum tanısı"
+title = "Academy: diagnose installation"
 contexts = ["pane", "workspace"]
 command = ["scripts/academy.sh", "--doctor"]
 
 [[actions]]
 id = "verify"
-title = "Academy: kurulumu doğrula"
+title = "Academy: verify installation"
 contexts = ["pane", "workspace"]
 command = ["scripts/academy.sh", "--verify-install"]

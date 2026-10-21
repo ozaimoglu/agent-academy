@@ -60,15 +60,15 @@ def main():
 
         try:
             wait_for("AGENT ACADEMY")
-            wait_for("BEKLEMEDE")
-            key("b", "Tur tamamlandı")
-            key("\x1b[H", "Birlikte ele aldığımız iş")
-            key("\x1b[F", "Tur tamamlandı")
+            wait_for("STANDBY")
+            key("b", "Turn completed")
+            key("\x1b[H", "Task")
+            key("\x1b[F", "Turn completed")
             plain = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", output.decode("utf-8", "replace"))
             for tab in ["1 LIVE", "2 WHY", "3 CODE", "4 VISUALIZE", "5 ASK", "6 REPORT"]:
                 if tab in plain:
                     raise RuntimeError("Removed navigation is still visible: " + tab)
-            key("d", "Durduruldu.")
+            key("d", "Stopped.")
             os.write(terminal, b"q")
             deadline = time.monotonic() + 10
             while time.monotonic() < deadline:

@@ -15,28 +15,29 @@ import { AcademyTUI } from './ui/app.js';
 import { pluginAction, createHerdrCall, closeAcademyPane } from './integration/herdr.js';
 import { prepareDemo } from './demo.js';
 
-const help = `Agent Academy 0.1.0 · Yerel mühendislik öğrenme arkadaşı
+const help = `Agent Academy 0.1.0 · Local engineering learning companion
 
-Herdr içinde: herdr plugin action invoke local.agent-academy.open
-Bağımsız:     npm start -- --project /mutlak/proje/yolu
-Demo:         npm run demo
-Rapor demosu: npm start -- --demo --headless
+In Herdr:   herdr plugin action invoke local.agent-academy.open
+Standalone: npm start -- --project /absolute/project/path
+Demo:       npm run demo
+Report demo: npm start -- --demo --headless
 
---project PATH       Seçili projenin gerçek dizini
---sessions-dir PATH  Codex JSONL oturum dizini (varsayılan CODEX_HOME/sessions)
---session ID         Aynı projedeki oturumun açık seçimi
---config-dir PATH    Ayar dizini
---state-dir PATH     SQLite ve rapor dizini
---demo               İzole, deterministik fixture; uzak API kullanılmaz
---headless           Bir gözlem turu çalıştır ve Markdown raporu yazdır
---no-onboarding      Mevcut/varsayılan ayarlarla TUI aç
---doctor             Araç ve veri erişimi tanısı
---verify-install     Kurulum bütünlüğü ve çevrimdışı kabul kontrolü
---help               Bu yardım
+--project PATH       Canonical selected project directory
+--sessions-dir PATH  Codex JSONL session directory (default CODEX_HOME/sessions)
+--session ID         Select a session within the project
+--config-dir PATH    Settings directory
+--state-dir PATH     SQLite and report directory
+--demo               Isolated deterministic fixture; no remote API
+--headless           Observe one task and print a Markdown report
+--no-onboarding      Open the TUI with current/default settings
+--doctor             Diagnose tools and data access
+--verify-install     Verify installation integrity and offline acceptance
+--help               Show this help
 
-Panel beklemede açılır. B başlat · D durdur · Q paneli kapat / çık
-Tek anlatım akışı: ↑↓ / Space kaydır · End en yeni açıklamaya dön
-Enter soru sor · S ayarlar · gerekirse C ile oturum seç`;
+The panel opens in standby. B start · D stop · Q close / exit
+One conversation: ↑↓ / Space scroll · End return to the latest
+Enter ask · S settings · C choose a session when needed
+Interface: English. Explanations: detected from your Codex conversation.`;
 async function main() {
   const { values } = parseArgs({
     options: {
@@ -72,7 +73,7 @@ async function main() {
       throw new Error(
         safeText(
           (error as { stderr?: string }).stderr ??
-            'Kurulum doğrulanamadı. Kurulum rehberini kontrol edin.',
+            'Could not verify the installation. Check the installation guide.',
           600,
         ),
       );
@@ -104,50 +105,50 @@ async function main() {
       project = r.pane?.foreground_cwd ?? r.pane?.cwd;
     }
     if (!project)
-      throw new Error('Plugin proje bağlamı bulunamadı. Pane’i Academy open eylemiyle açın.');
+      throw new Error('Plugin project context was not found. Use the Academy open action.');
   }
   const root = await canonical(project ?? process.cwd());
   if (values.doctor) {
     const exec = promisify(execFile);
     const checks: string[] = [
       `Node: ${process.version}`,
-      `Node çalıştırıcı: ${process.execPath}`,
-      `Proje: ${root}`,
-      `Ayarlar: ${paths.config}`,
-      `Yerel depo: ${paths.state}`,
+      `Node executable: ${process.execPath}`,
+      `Project: ${root}`,
+      `Settings: ${paths.config}`,
+      `Local store: ${paths.state}`,
     ];
     try {
       const record = JSON.parse(
         await readFile(new URL('./install-info.json', import.meta.url), 'utf8'),
       );
       checks.unshift(
-        `Academy: ${record.version} · revizyon ${record.source?.commit ?? 'bilinmiyor'}${record.source?.dirty ? ' (değiştirilmiş checkout)' : ''}`,
-        `Kurulum doğrulaması: ${record.validatedAt ?? 'bilinmiyor'}`,
+        `Academy: ${record.version} · revision ${record.source?.commit ?? 'unknown'}${record.source?.dirty ? ' (modified checkout)' : ''}`,
+        `Installation validated: ${record.validatedAt ?? 'unknown'}`,
       );
     } catch {
-      checks.unshift('Academy: geliştirme derlemesi · doğrulanmış kurulum kaydı yok');
+      checks.unshift('Academy: development build · no validated installation receipt');
     }
     for (const command of ['herdr', 'codex'])
       try {
         const r = await exec(command, ['--version'], { timeout: 5000 });
         checks.push(`${command}: ${r.stdout.trim()}`);
       } catch {
-        checks.push(`${command}: bulunamadı veya erişilemiyor`);
+        checks.push(`${command}: not found or inaccessible`);
       }
     try {
       await access(paths.sessions);
-      checks.push('Codex oturum dizini: erişilebilir');
+      checks.push('Codex session directory: accessible');
     } catch {
-      checks.push('Codex oturum dizini: henüz yok / erişilemiyor');
+      checks.push('Codex session directory: missing / inaccessible');
     }
-    checks.push(`Herdr bağlamı: ${process.env.HERDR_ENV === '1' ? 'var' : 'yok'}`);
+    checks.push(`Herdr context: ${process.env.HERDR_ENV === '1' ? 'available' : 'none'}`);
     try {
       await checkCodex(process.env.ACADEMY_CODEX_BIN || 'codex');
       checks.push(
-        'Codex açıklama sağlayıcısı: hazır · ChatGPT girişi / Codex kotası (model isteği yapılmadı)',
+        'Codex explanation provider: ready · ChatGPT login / Codex quota (no model request made)',
       );
     } catch (error) {
-      checks.push(`Codex açıklama sağlayıcısı: ${safeText((error as Error).message, 250)}`);
+      checks.push(`Codex explanation provider: ${safeText((error as Error).message, 250)}`);
     }
     console.log(checks.join('\n'));
     return;
@@ -175,14 +176,14 @@ async function main() {
       await academy.tick();
       if (values.session) {
         const s = academy.snapshot.sessions.find((s) => s.id === values.session);
-        if (!s) throw new Error('İstenen oturum seçili projede bulunamadı.');
+        if (!s) throw new Error('The requested session was not found in this project.');
         await academy.select(s);
         await academy.tick();
       }
     }
     if (values.headless) {
       if (!academy.snapshot.selected)
-        throw new Error(academy.snapshot.status + ' --session ID ile seçin.');
+        throw new Error(academy.snapshot.status + ' Select with --session ID.');
       await academy.beginLearning({ replay: true });
       await academy.settle();
       if (!config.provider.autoAnalyze) {
@@ -190,11 +191,11 @@ async function main() {
         await academy.settle();
       }
       console.log(academy.report());
-      console.error('Rapor: ' + (await academy.export()));
+      console.error('Report: ' + (await academy.export()));
       return;
     }
     if (!process.stdin.isTTY)
-      throw new Error('Etkileşimli terminal gerekli. Rapor için --headless kullanın.');
+      throw new Error('An interactive terminal is required. Use --headless for a report.');
     process.stdout.write('\x1b[?1049h');
     alternate = true;
     screen = render(
@@ -223,7 +224,7 @@ async function main() {
 }
 main().catch((e) => {
   console.error(
-    'Agent Academy: ' + safeText(e instanceof Error ? e.message : 'Bilinmeyen hata', 600),
+    'Agent Academy: ' + safeText(e instanceof Error ? e.message : 'Unknown error', 600),
   );
   process.exitCode = 1;
 });

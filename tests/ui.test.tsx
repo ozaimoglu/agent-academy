@@ -12,17 +12,17 @@ it('completes four onboarding screens with deep/default preferences in seconds',
   const save = vi.fn(async () => {});
   const ui = render(<OnboardingWizard initial={defaultConfig()} onSave={save} />);
   await pause();
-  expect(ui.lastFrame()).toContain('Ne kadar derin');
-  expect(ui.lastFrame()).toContain('◉ Derinlemesine');
+  expect(ui.lastFrame()).toContain('How deeply');
+  expect(ui.lastFrame()).toContain('◉ In depth');
   ui.stdin.write('\r');
   await pause();
-  expect(ui.lastFrame()).toContain('nasıl öğrenmeyi');
+  expect(ui.lastFrame()).toContain('prefer to learn');
   ui.stdin.write('\r');
   await pause();
-  expect(ui.lastFrame()).toContain('neye odaklanalım');
+  expect(ui.lastFrame()).toContain('should we focus on');
   ui.stdin.write('\r');
   await pause();
-  expect(ui.lastFrame()).toContain('hangi model');
+  expect(ui.lastFrame()).toContain('model should explain');
   ui.stdin.write('\r');
   await pause();
   expect(save).toHaveBeenCalledTimes(1);
@@ -40,13 +40,13 @@ it('supports keyboard multi-select and back navigation without losing preference
   await pause();
   ui.stdin.write(' ');
   await pause();
-  expect(ui.lastFrame()).toContain('□ Görsel');
+  expect(ui.lastFrame()).toContain('□ Visual');
   ui.stdin.write('\x1b');
   await pause();
-  expect(ui.lastFrame()).toContain('Ne kadar derin');
+  expect(ui.lastFrame()).toContain('How deeply');
   ui.stdin.write('\r');
   await pause();
-  expect(ui.lastFrame()).toContain('□ Görsel');
+  expect(ui.lastFrame()).toContain('□ Visual');
 });
 it('collects generic learning priorities without asking for a language or framework', async () => {
   const save = vi.fn(async () => {});
@@ -54,8 +54,8 @@ it('collects generic learning priorities without asking for a language or framew
   await pause();
   ui.stdin.write('3');
   await pause();
-  expect(ui.lastFrame()).toContain('Temel kavramlar');
-  expect(ui.lastFrame()).toContain('Projedeki tüm konular');
+  expect(ui.lastFrame()).toContain('Fundamentals');
+  expect(ui.lastFrame()).toContain('Everything in the project');
   for (const technology of ['Java', 'Spring', 'TypeScript', 'Frontend'])
     expect(ui.lastFrame()).not.toContain(technology);
   ui.stdin.write('\x1b[B');
@@ -84,9 +84,9 @@ it('requires an explicit remote data-sharing confirmation inside the product', a
   await pause();
   ui.stdin.write('\r');
   await pause();
-  expect(ui.lastFrame()).toContain('Dış servise veri gönderme izni');
+  expect(ui.lastFrame()).toContain('External data sharing consent');
   expect(save).not.toHaveBeenCalled();
-  ui.stdin.write('o');
+  ui.stdin.write('y');
   await pause();
   expect(save).toHaveBeenCalledTimes(1);
 });
@@ -128,20 +128,20 @@ it('selects existing Codex quota without an API key and obtains explicit project
   await pause();
   ui.stdin.write(' ');
   await pause();
-  expect(ui.lastFrame()).toContain('ortak Codex kotası');
+  expect(ui.lastFrame()).toContain('shared Codex quota');
   ui.stdin.write('a');
   await pause();
-  expect(ui.lastFrame()).not.toContain('API adresi');
-  expect(ui.lastFrame()).not.toContain('Anahtar ortam');
+  expect(ui.lastFrame()).not.toContain('API address');
+  expect(ui.lastFrame()).not.toContain('API key environment');
   expect((ui.lastFrame() ?? '').split('\n').length).toBeLessThanOrEqual(24);
   ui.stdin.write('\x1b');
   await pause();
   ui.stdin.write('\r');
   await pause();
-  expect(ui.lastFrame()).toContain('Aynı Codex kotası');
+  expect(ui.lastFrame()).toContain('Uses your Codex quota');
   expect((ui.lastFrame() ?? '').split('\n').length).toBeLessThanOrEqual(24);
   expect(save).not.toHaveBeenCalled();
-  ui.stdin.write('o');
+  ui.stdin.write('y');
   await pause();
   const saved = save.mock.calls[0]?.[0];
   expect(saved?.provider.kind).toBe('codex');
@@ -154,7 +154,7 @@ it('keeps narrow onboarding readable inside a 38-column pane', async () => {
   );
   await pause();
   const frame = ui.lastFrame() ?? '';
-  expect(frame).toContain('Derinlemesine');
+  expect(frame).toContain('In depth');
   expect(frame.split('\n').length).toBeLessThanOrEqual(24);
 });
 it('fits all onboarding screens and advanced fields in a narrow pane', async () => {
@@ -197,12 +197,12 @@ it('keeps one narrative surface throughout the deterministic teaching pipeline',
   );
   try {
     await pause();
-    expect(ui.lastFrame()).toContain('BEKLEMEDE');
+    expect(ui.lastFrame()).toContain('STANDBY');
     expect(academy.snapshot.lessons).toHaveLength(0);
     ui.stdin.write('b');
     await vi.waitFor(() => expect(academy.snapshot.lessons.length).toBe(1));
     await pause();
-    expect(ui.lastFrame()).toContain('Tur tamamlandı');
+    expect(ui.lastFrame()).toContain('Turn completed');
     const frame = ui.lastFrame();
     for (const key of ['1', '2', '3', '4', '5', '6', '\t', '\x1b[C']) {
       ui.stdin.write(key);
@@ -213,7 +213,7 @@ it('keeps one narrative surface throughout the deterministic teaching pipeline',
       expect(ui.lastFrame()).not.toContain(tab);
     ui.stdin.write('s');
     await pause();
-    expect(ui.lastFrame()).toContain('Ne kadar derin');
+    expect(ui.lastFrame()).toContain('How deeply');
   } finally {
     ui.unmount();
     await academy.stop();
@@ -242,12 +242,12 @@ it('offers keyboard Start, Stop and panel Close without starting automatically',
   );
   try {
     await pause();
-    expect(ui.lastFrame()).toContain('[B Başlat]');
+    expect(ui.lastFrame()).toContain('[B Start]');
     expect(academy.snapshot.lessons).toHaveLength(0);
     ui.stdin.write('B');
     await vi.waitFor(() => expect(academy.snapshot.learning).toBe('active'));
     await pause();
-    expect(ui.lastFrame()).toContain('[D Durdur]');
+    expect(ui.lastFrame()).toContain('[D Stop]');
     ui.stdin.write('D');
     await pause();
     expect(academy.snapshot.learning).toBe('paused');
@@ -341,7 +341,7 @@ it('keeps a reader in history as new activity arrives and resumes following with
     ui.stdin.write('\x1b[F');
     await pause();
     expect(ui.lastFrame()).toContain('NEW_LAST_STEP');
-    expect(ui.lastFrame()).toContain('Yeni açıklamalar burada devam eder.');
+    expect(ui.lastFrame()).toContain('New explanations continue here.');
   } finally {
     ui.unmount();
     await academy.stop();
@@ -389,13 +389,13 @@ it('accepts a question and displays its answer in the same narrative', async () 
     await pause();
     ui.stdin.write('\r');
     await pause();
-    expect(ui.lastFrame()).toContain('Sorunu yaz');
+    expect(ui.lastFrame()).toContain('Type your question');
     ui.stdin.write('Neden böyle?');
     await pause();
     ui.stdin.write('\r');
     await vi.waitFor(() => expect(ask).toHaveBeenCalledWith(lesson, 'Neden böyle?'));
     await pause();
-    expect(ui.lastFrame()).toContain('Senin sorun');
+    expect(ui.lastFrame()).toContain('Your question');
     expect(ui.lastFrame()).toContain('Çünkü burada değer yeniden atanıyor.');
     expect(ui.lastFrame()).not.toContain('ASK');
   } finally {

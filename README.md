@@ -32,6 +32,8 @@ Start Codex the way you already do. Academy reads local session records independ
 
 Academy has one continuous reading surface. As Codex works, it explains what we are looking at, what the evidence suggests, which code changed and why, and what the checks show. Relevant code and small evidence-backed diagrams appear inside the explanation.
 
+Language detection runs locally on your own Codex messages. Code, logs and assistant replies do not determine the teaching language. A clear new language switches future explanations; short neutral commands such as `push` retain the earlier conversation language. No language picker or extra model request is needed. Offline narration includes English and Turkish; other languages use your configured explanation model. Existing fixed-Turkish settings migrate automatically without changing provider consent.
+
 New explanations continue below the previous ones. Scroll up to reread; Academy keeps your place until you return to the latest message with **End**. Press **Enter** to ask a follow-up question and read the answer in the same conversation. A Markdown debrief is saved locally when the task finishes.
 
 ### Go deeper than “we moved the method”
@@ -44,7 +46,7 @@ Structured lessons retain evidence references and eleven detailed sections for t
 
 ## Quick start
 
-Use **Herdr's managed installation** for everyday use. It builds and validates a separate installation before registering the plugin. The primary target is Ubuntu 24.04; Linux and macOS are supported. The interface defaults to Turkish.
+Use **Herdr's managed installation** for everyday use. It builds and validates a separate installation before registering the plugin. The primary target is Ubuntu 24.04; Linux and macOS are supported. The interface is in English. Explanations follow the language you use with Codex automatically.
 
 | Prerequisite | Minimum / requirement                            | Check                              |
 | ------------ | ------------------------------------------------ | ---------------------------------- |
@@ -82,7 +84,7 @@ herdr plugin action invoke local.agent-academy.open
 
 Academy opens in a **right-side split**, approximately **38%** wide by default. Installation registers a Herdr plugin; it does not change your Codex configuration or require a different launch command.
 
-**Opening the panel does not start learning.** Focus the Academy pane and press **B · Başlat** for the task you want to learn from. Press **D · Durdur** to stop capture and cancel an in-flight explanation. On task completion, Academy prepares the final debrief and returns to standby; the next task needs another **B**. Press **Q** inside the panel to close it, or use:
+**Opening the panel does not start learning.** Focus the Academy pane and press **B · Start** for the task you want to learn from. Press **D · Stop** to stop capture and cancel an in-flight explanation. On task completion, Academy prepares the final debrief and returns to standby; the next task needs another **B**. Press **Q** inside the panel to close it, or use:
 
 ```bash
 herdr plugin action invoke local.agent-academy.close
@@ -229,7 +231,7 @@ Remote source sharing requires explicit project-specific opt-in. HTTP explanatio
 
 **v0.1.0 MVP.** The application is implemented; validation scope is documented openly.
 
-- **113 automated tests** cover installation, onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. The single conversation starts explaining immediately, includes code and cited diagrams inline, retains reading position, and accepts follow-up questions without changing screens. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
+- **130 automated tests** cover installation, onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. The single conversation starts explaining immediately, includes code and cited diagrams inline, retains reading position, and accepts follow-up questions without changing screens. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
 - Build, lint, deterministic demo, and actual project-matching **Codex 0.163.0** command/result parsing were verified during development.
 - Ubuntu 24.04 container validation covers clean installation, build/lint/tests, SQLite, offline reports, real loopback HTTP and real PTY keyboard navigation. The production image runs as a regular user with development dependencies removed. CI covers Ubuntu with Node 22.19 and 24.
 - Herdr pane open/close actions were exercised on the installed macOS server after fixing split targeting; the launcher is tested from another project directory. Native Ubuntu desktop/Herdr integration and real-model explanation quality still need target-machine validation.

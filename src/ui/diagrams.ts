@@ -15,7 +15,7 @@ function box(label: string, width: number): string[] {
 }
 export function renderDiagram(edges: DiagramEdge[], width: number, showEvidence = true): string {
   if (!edges.length)
-    return 'Henüz kanıta bağlı bir ilişki yok. Yeni gözlemler geldikçe akış oluşacak.';
+    return 'No evidence-backed relationship yet. The flow will appear as observations arrive.';
   const w = Math.max(12, Math.min(width, 72));
   return edges
     .map((edge) =>
@@ -27,7 +27,7 @@ export function renderDiagram(edges: DiagramEdge[], width: number, showEvidence 
           .map((l) => '    │ ' + l),
         '    ▼',
         ...box(edge.to, w),
-        ...(showEvidence ? [`Kanıt: ${edge.evidence.join(', ')}`] : []),
+        ...(showEvidence ? [`Evidence: ${edge.evidence.join(', ')}`] : []),
       ].join('\n'),
     )
     .join('\n\n');

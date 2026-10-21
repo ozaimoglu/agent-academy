@@ -55,6 +55,7 @@ export interface Usage {
   estimated: boolean;
 }
 export interface Lesson {
+  language?: string;
   captureId?: string;
   id: string;
   sessionId: string;
@@ -94,16 +95,16 @@ export interface SessionAdapter {
   ): Promise<{ events: AcademyEvent[]; checkpoint: Checkpoint; warnings: string[]; more: boolean }>;
 }
 export const stageLabels: Record<Stage, string> = {
-  INVESTIGATING: 'İnceleniyor',
-  HYPOTHESIS: 'Hipotez',
-  ROOT_CAUSE_IDENTIFIED: 'Kök neden gözlemi',
-  IMPLEMENTING: 'Uygulanıyor',
-  VALIDATING: 'Doğrulanıyor',
-  COMPLETED: 'Tur tamamlandı',
+  INVESTIGATING: 'Investigating',
+  HYPOTHESIS: 'Hypothesis',
+  ROOT_CAUSE_IDENTIFIED: 'Root cause observation',
+  IMPLEMENTING: 'Implementing',
+  VALIDATING: 'Validating',
+  COMPLETED: 'Turn completed',
 };
 export const confidenceLabels: Record<Confidence, string> = {
-  Confirmed: 'Doğrulandı',
-  'Strongly supported': 'Güçlü destek',
-  Hypothesis: 'Hipotez',
-  Unknown: 'Bilinmiyor',
+  Confirmed: 'Confirmed',
+  'Strongly supported': 'Strongly supported',
+  Hypothesis: 'Hypothesis',
+  Unknown: 'Unknown',
 };

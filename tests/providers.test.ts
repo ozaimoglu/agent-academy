@@ -76,7 +76,7 @@ it('propagates cancellation and bounds overly large or malformed responses', asy
   await expect(new OpenAICompatibleProvider(local()).explain('s', 'c')).rejects.toThrow('1 MiB');
   fetch.mockResolvedValue(new Response('bad'));
   await expect(new OpenAICompatibleProvider(local()).explain('s', 'c')).rejects.toThrow(
-    'geçersiz JSON',
+    'invalid JSON',
   );
 });
 it('rejects truncated model replies instead of silently teaching incomplete output', async () => {
@@ -90,5 +90,7 @@ it('rejects truncated model replies instead of silently teaching incomplete outp
       ),
     ),
   );
-  await expect(new OpenAICompatibleProvider(local()).explain('s', 'c')).rejects.toThrow('kesildi');
+  await expect(new OpenAICompatibleProvider(local()).explain('s', 'c')).rejects.toThrow(
+    'truncated',
+  );
 });

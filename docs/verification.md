@@ -2,6 +2,15 @@
 
 Date: 2026-10-21. Host: macOS. Target: Ubuntu 24.04.
 
+## English interface and conversation language
+
+- `npm run check`: **130 tests across 12 files**, lint, strict TypeScript and build passed. The real PTY smoke passed on macOS. Actual Ubuntu 24.04 arm64 container acceptance passed all 130 tests, production-host installation, receipt verification, real loopback HTTP and PTY checks.
+
+- Product chrome, onboarding/consent, plugin action titles, CLI diagnostics, installer output and report structure use English.
+- Local language regressions cover Turkish (including ASCII chat spelling), English, Spanish, French, German, Chinese and Japanese. Later clear requests switch languages; neutral commands retain the prior language. Code, quoted logs, assistant messages and injected instructions are excluded as signals.
+- Teaching/Q&A provider-contract tests validate language context and localized failure fallback without real inference or extra model requests. Completed-turn language is inherited at explicit Start without ingesting the previous tasks. Legacy configuration migration preserves all provider consent and preferences.
+- Offline narration includes English and Turkish. Other languages require the configured model; real-model multilingual quality has not been evaluated.
+
 ## One continuous teaching conversation
 
 - Replaced the six content views with one chronological conversation. Actual code comparisons and useful cited diagrams appear alongside the explanation. Follow-up questions and answers use the same surface. The structured lesson and automatic Markdown export remain available to the backend.

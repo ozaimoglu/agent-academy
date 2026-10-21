@@ -63,9 +63,9 @@ else {
 it('persists Codex configuration, requires explicit project consent, allows the CLI default model', async () => {
   const p = config();
   expect(() => validateProvider(p, '/project')).not.toThrow();
-  expect(() => validateProvider(p, '/other')).toThrow('Bu proje');
-  expect(() => validateProvider({ ...p, consent: '' })).toThrow('izni');
-  expect(() => validateProvider({ ...p, model: 'other' }, '/project')).toThrow('Bu proje');
+  expect(() => validateProvider(p, '/other')).toThrow('for this project');
+  expect(() => validateProvider({ ...p, consent: '' })).toThrow('consent');
+  expect(() => validateProvider({ ...p, model: 'other' }, '/project')).toThrow('for this project');
   const dir = await temp();
   const settings = { ...defaultConfig(), onboarded: true, provider: p };
   await saveConfig(dir, settings);
@@ -136,9 +136,9 @@ it('disables capabilities and applies a restricted filesystem profile without sh
   expect(codexEnvironment({ CODEX_HOME: '/auth', SECRET: 'x' }).CODEX_HOME).toBe('/auth');
 });
 it.each([
-  { version: 'codex-cli 0.162.0', error: 'doğrulanmadı' },
-  { version: 'codex-cli 0.164.0', error: 'doğrulanmadı' },
-  { login: 'Logged in using an API key', error: 'ChatGPT girişi' },
+  { version: 'codex-cli 0.162.0', error: 'not been verified' },
+  { version: 'codex-cli 0.164.0', error: 'not been verified' },
+  { login: 'Logged in using an API key', error: 'ChatGPT login' },
 ])(
   'rejects unsupported CLI or API-key auth before sending context: $version $login',
   async (options) => {
@@ -154,19 +154,22 @@ it('exposes quota errors without echoing source, and never switches to an HTTP p
     run: `emit({type:'turn.failed',error:{message:'429 quota reached project-secret'}});`,
   });
   const provider = new CodexCLIProvider(config(), process.env, file);
-  await expect(provider.explain('s', 'c')).rejects.toThrow('kotası');
+  await expect(provider.explain('s', 'c')).rejects.toThrow('quota');
   await expect(provider.explain('s', 'c')).rejects.not.toThrow('project-secret');
 });
 it('stops on unexpected tool activity and rejects incomplete or oversized output', async () => {
   for (const [run, error] of [
     [
       `emit({type:'item.started',item:{type:'command_execution'}}); setInterval(()=>{},1000);`,
-      'araç',
+      'tool call',
     ],
-    [`emit({type:'item.completed',item:{type:'agent_message',text:'incomplete'}});`, 'tamamlamadı'],
-    [`process.stdout.write('x'.repeat(1024*1024+1));`, 'satır sınırını'],
-    [`console.log('bad json');`, 'geçersiz JSONL'],
-    [`console.log('null');`, 'olay biçimi'],
+    [
+      `emit({type:'item.completed',item:{type:'agent_message',text:'incomplete'}});`,
+      'did not finish',
+    ],
+    [`process.stdout.write('x'.repeat(1024*1024+1));`, 'line limit'],
+    [`console.log('bad json');`, 'invalid JSONL'],
+    [`console.log('null');`, 'event shape'],
   ]) {
     const { file } = await fakeCodex({ run });
     await expect(
@@ -182,7 +185,7 @@ it('kills only its own process on cancellation and cleans the isolated directory
     'c',
     controller.signal,
   );
-  const rejected = expect(result).rejects.toThrow('iptal');
+  const rejected = expect(result).rejects.toThrow('cancelled');
   for (let i = 0; i < 100; i++) {
     try {
       await access(capture);
@@ -224,7 +227,7 @@ it('stops on other CLI item errors and keeps private diagnostics out of the UI',
     await new CodexCLIProvider(config(), process.env, file).explain('s', 'c');
     expect.fail('Expected CLI error');
   } catch (error) {
-    expect((error as Error).message).toContain('oturumunda hata');
+    expect((error as Error).message).toContain('session error');
     expect((error as Error).message).not.toContain('private-project-context');
   }
 });
@@ -266,7 +269,7 @@ it('runs a cited lesson and independent follow-up through the Codex subprocess a
   const engine = new TeachingEngine(settings, new CodexCLIProvider(p, process.env, file));
   const lesson = await engine.lesson('session', 'INVESTIGATING', events);
   expect(lesson.error).toBeUndefined();
-  expect(lesson.provider).toContain('ChatGPT kotası');
+  expect(lesson.provider).toContain('ChatGPT quota');
   expect(lesson.evidenceIds).toContain('verified-evidence');
   const question = await engine.ask(lesson, 'Bu kanıt neyi doğruluyor?', events, []);
   expect(question.lessonId).toBe(lesson.id);

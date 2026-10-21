@@ -62,9 +62,10 @@ export async function readSource(
     path.isAbsolute(relative) ||
     sensitivePath(relative)
   )
-    throw new Error('Proje dışı veya hassas dosya okunamaz.');
+    throw new Error('Cannot read sensitive files or files outside the project.');
   const s = await stat(resolved);
-  if (!s.isFile() || s.size > 512 * 1024) throw new Error('Kaynak dosya boyut sınırını aşıyor.');
+  if (!s.isFile() || s.size > 512 * 1024)
+    throw new Error('The source file exceeds the size limit.');
   const handle = await open(resolved, 'r');
   try {
     const content = await handle.readFile('utf8');

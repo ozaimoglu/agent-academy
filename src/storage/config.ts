@@ -22,14 +22,14 @@ export const providerSchema = z.object({
   autoAnalyze: z.boolean().default(true),
 });
 export const learningPriorities = [
-  ['debugging', 'Hata ayıklama ve kök neden'],
-  ['fundamentals', 'Temel kavramlar ve mekanizmalar'],
-  ['architecture', 'Mimari ve tasarım kararları'],
-  ['performance', 'Performans ve eşzamanlılık'],
-  ['testing', 'Test ve doğrulama'],
-  ['security', 'Güvenlik ve güvenilirlik'],
-  ['code', 'Kod okuma ve uygulama'],
-  ['everything', 'Projedeki tüm konular'],
+  ['debugging', 'Debugging and root causes'],
+  ['fundamentals', 'Fundamentals and mechanisms'],
+  ['architecture', 'Architecture and design decisions'],
+  ['performance', 'Performance and concurrency'],
+  ['testing', 'Testing and validation'],
+  ['security', 'Security and reliability'],
+  ['code', 'Reading and implementing code'],
+  ['everything', 'Everything in the project'],
 ] as const;
 const normalizePriorities = (value: unknown) => {
   if (!Array.isArray(value)) return value;
@@ -41,7 +41,10 @@ const normalizePriorities = (value: unknown) => {
 export const configSchema = z.object({
   version: z.literal(1).default(1),
   onboarded: z.boolean().default(false),
-  language: z.literal('tr').default('tr'),
+  language: z
+    .enum(['auto', 'tr'])
+    .default('auto')
+    .transform(() => 'auto' as const),
   depth: z.enum(['quick', 'balanced', 'deep']).default('deep'),
   styles: z
     .array(z.enum(['visual', 'code', 'fundamentals', 'senior', 'interactive']))
@@ -56,7 +59,7 @@ export type ProviderConfig = Config['provider'];
 export const defaultConfig = (): Config => configSchema.parse({});
 export const sharesExternally = (p: ProviderConfig) => p.kind === 'remote' || p.kind === 'codex';
 export const providerDestination = (p: ProviderConfig) =>
-  p.kind === 'codex' ? 'Codex CLI · OpenAI / ChatGPT hesabı' : p.baseUrl;
+  p.kind === 'codex' ? 'Codex CLI · OpenAI / ChatGPT account' : p.baseUrl;
 export const consentKey = (p: ProviderConfig, project?: string) =>
   hash(
     `${p.kind}|${p.kind === 'codex' ? 'chatgpt' : p.baseUrl}|${p.model}${project ? '|' + project : ''}`,
@@ -79,30 +82,32 @@ export function isLoopback(url: string): boolean {
 export function validateProvider(p: ProviderConfig, project?: string) {
   if (p.kind === 'offline') return;
   if (p.kind !== 'codex') {
-    if (!p.model.trim()) throw new Error('Model adı gerekli.');
+    if (!p.model.trim()) throw new Error('A model name is required.');
     const u = new URL(p.baseUrl);
     if (u.username || u.password || u.search || u.hash)
-      throw new Error('URL içinde kimlik bilgisi veya sorgu kullanmayın.');
+      throw new Error('Do not include credentials or query parameters in the URL.');
     if (p.kind === 'local' && !isLoopback(p.baseUrl))
       throw new Error(
-        'Yerel sağlayıcı loopback adresi kullanmalı. LAN için uzak sağlayıcıyı ve açık izni seçin.',
+        'Local providers must use a loopback address. Use remote mode and explicit consent for LAN servers.',
       );
     if (p.kind === 'remote' && u.protocol !== 'https:')
-      throw new Error('Uzak sağlayıcı HTTPS gerektirir.');
+      throw new Error('Remote providers require HTTPS.');
   }
   if (sharesExternally(p) && project && !p.approvedProjects.includes(consentKey(p, project)))
     throw new Error(
-      'Bu proje için uzak modele veri gönderme izni gerekli. Onboarding veya Ayarlar ekranını açın.',
+      'External data sharing consent is required for this project. Open onboarding or Settings.',
     );
   if (sharesExternally(p) && p.consent !== consentKey(p))
-    throw new Error('Bu sağlayıcı, model ve adres için açık veri paylaşım izni gerekli.');
+    throw new Error(
+      'Explicit data sharing consent is required for this provider, model and destination.',
+    );
 }
 export async function loadConfig(dir: string): Promise<Config> {
   try {
     return configSchema.parse(JSON.parse(await readFile(path.join(dir, 'settings.json'), 'utf8')));
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return defaultConfig();
-    throw new Error(`Ayarlar okunamadı: ${e instanceof Error ? e.message : 'geçersiz dosya'}`);
+    throw new Error(`Could not read settings: ${e instanceof Error ? e.message : 'invalid file'}`);
   }
 }
 export async function saveConfig(dir: string, config: Config) {

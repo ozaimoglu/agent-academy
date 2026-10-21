@@ -90,7 +90,7 @@ export class GitChangeTracker {
       return {
         session: s,
         events: [],
-        warning: 'Git bilgisi alınamadı (repo veya HEAD olmayabilir).',
+        warning: 'Could not read Git information (repository or HEAD may be missing).',
       };
     }
   }

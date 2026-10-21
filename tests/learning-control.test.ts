@@ -200,7 +200,7 @@ it('requires another Start when a distinct task arrives without a completion mar
     );
     await academy.tick();
     expect(academy.snapshot.learning).toBe('paused');
-    expect(academy.snapshot.status).toContain('Yeni görev');
+    expect(academy.snapshot.status).toContain('New task');
     expect(academy.report()).toContain('selected-current-work');
     expect(academy.report()).not.toContain('new-unselected-work');
     expect(academy.report()).not.toContain('new task output');
@@ -260,7 +260,7 @@ it('explains new Git changes without needing a new Codex message and avoids repe
     await academy.settle();
     expect(academy.snapshot.stage).toBe('IMPLEMENTING');
     expect(academy.snapshot.lessons).toHaveLength(1);
-    expect(academy.snapshot.lessons[0]?.walkthrough?.[0]?.body).toContain('Önce: before');
+    expect(academy.snapshot.lessons[0]?.walkthrough?.[0]?.body).toContain('Before: before');
     await academy.tick();
     await academy.settle();
     expect(academy.snapshot.lessons).toHaveLength(1);

@@ -17,7 +17,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     validateProvider(this.config);
     const key = this.config.keyEnv ? this.env[this.config.keyEnv] : undefined;
     if (this.config.keyEnv && !key)
-      throw new Error(`${this.config.keyEnv} ortam değişkeni bulunamadı.`);
+      throw new Error(`${this.config.keyEnv} environment variable was not found.`);
     const timeout = AbortSignal.timeout(120000);
     const response = await fetch(this.config.baseUrl.replace(/\/$/, '') + '/chat/completions', {
       method: 'POST',
@@ -41,10 +41,10 @@ export class OpenAICompatibleProvider implements LLMProvider {
     // Do not echo provider error bodies: they may contain echoed credentials or project context.
     if (!response.ok) {
       await response.body?.cancel();
-      throw new Error(`Model isteği başarısız: HTTP ${response.status}.`);
+      throw new Error(`Model request failed: HTTP ${response.status}.`);
     }
     const reader = response.body?.getReader();
-    if (!reader) throw new Error('Sağlayıcı boş yanıt döndürdü.');
+    if (!reader) throw new Error('The provider returned an empty response.');
     const chunks: Uint8Array[] = [];
     let size = 0;
     for (;;) {
@@ -53,7 +53,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       size += value.byteLength;
       if (size > 1024 * 1024) {
         await reader.cancel();
-        throw new Error('Model yanıtı 1 MiB sınırını aştı.');
+        throw new Error('The model response exceeded the 1 MiB limit.');
       }
       chunks.push(value);
     }
@@ -61,12 +61,12 @@ export class OpenAICompatibleProvider implements LLMProvider {
     try {
       body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     } catch {
-      throw new Error('Sağlayıcı geçersiz JSON döndürdü.');
+      throw new Error('The provider returned invalid JSON.');
     }
     const text = body.choices?.[0]?.message?.content;
-    if (typeof text !== 'string' || !text.trim()) throw new Error('Model metin yanıtı döndürmedi.');
+    if (typeof text !== 'string' || !text.trim()) throw new Error('The model returned no text.');
     if (body.choices?.[0]?.finish_reason === 'length')
-      throw new Error('Model çıktısı kesildi. Ayarlardan çıktı bütçesini artırın.');
+      throw new Error('The model output was truncated. Increase the output budget in Settings.');
     const u = body.usage;
     return {
       text: safeText(text, 256000),

@@ -56,14 +56,14 @@ export function AcademyTUI({
   const questions = lessons.flatMap((l) => academy.questions(l));
   const needsSession = !snapshot.selected && snapshot.sessions.length > 1;
   const sessionText = [
-    'Hangi Codex oturumunu birlikte izleyelim?',
+    'Which Codex session should we follow?',
     '',
     ...snapshot.sessions.map(
       (s, i) =>
-        `${i === sessionIndex ? '›' : ' '} ${s.branch ?? 'Codex'} · ${new Date(s.modified).toLocaleString('tr-TR')}\n  ${s.id}`,
+        `${i === sessionIndex ? '›' : ' '} ${s.branch ?? 'Codex'} · ${new Date(s.modified).toLocaleString('en-US')}\n  ${s.id}`,
     ),
     '',
-    '↑↓ seç · Enter bağlan · Esc dön',
+    '↑↓ select · Enter connect · Esc back',
   ].join('\n');
   const content = choosingSession
     ? sessionText
@@ -88,7 +88,7 @@ export function AcademyTUI({
   const ask = async (text: string) => {
     if (!lesson || !text.trim()) return;
     setTyping(false);
-    setNotice('Sorunu birlikte ele alıyorum…');
+    setNotice('Preparing your answer…');
     setFollowing(true);
     try {
       await academy.ask(lesson, text);
@@ -140,11 +140,11 @@ export function AcademyTUI({
     }
     if (input === 'd') {
       academy.pauseLearning();
-      setNotice('Durduruldu. Yeniden başlamak için B.');
+      setNotice('Stopped. Press B to start again.');
       return;
     }
     if (input === 's') {
-      academy.pauseLearning('Ayarlar açık · kaydettikten sonra B Başlat.');
+      academy.pauseLearning('Settings open · press B after saving.');
       setWizard(true);
       return;
     }
@@ -155,9 +155,9 @@ export function AcademyTUI({
       return;
     }
     if (key.return) {
-      if (snapshot.busy) setNotice('Devam eden açıklama tamamlanınca sorunu yazabilirsin.');
+      if (snapshot.busy) setNotice('You can ask once the current explanation is ready.');
       else if (!lesson) {
-        if (!snapshot.events.length) setNotice('İlk gözlem geldiğinde burada soru sorabilirsin.');
+        if (!snapshot.events.length) setNotice('You can ask here after the first observation.');
         else {
           try {
             academy.requestLesson();
@@ -210,8 +210,8 @@ export function AcademyTUI({
     return (
       <Box flexDirection="column">
         <Text>◈ Academy</Text>
-        <Text>Biraz daha geniş bir terminal aç.</Text>
-        <Text>Q kapat</Text>
+        <Text>Please enlarge the terminal.</Text>
+        <Text>Q close</Text>
       </Box>
     );
   return (
@@ -223,10 +223,10 @@ export function AcademyTUI({
         <Text color={c.muted}>
           {demo ? 'DEMO · ' : ''}
           {snapshot.learning === 'paused'
-            ? 'BEKLEMEDE'
+            ? 'STANDBY'
             : snapshot.busy
-              ? 'Anlatıyorum…'
-              : 'Birlikte izliyoruz'}
+              ? 'Explaining…'
+              : 'Following Codex'}
         </Text>
       </Box>
       <Box
@@ -249,7 +249,7 @@ export function AcademyTUI({
       </Box>
       {typing && (
         <Box flexDirection="column">
-          <Text color={c.accent}>Sorunu yaz · Enter gönder · Esc vazgeç</Text>
+          <Text color={c.accent}>Type your question · Enter send · Esc cancel</Text>
           <TextInput
             value={question}
             onChange={(v) => setQuestion(v.slice(0, 2000))}
@@ -261,18 +261,16 @@ export function AcademyTUI({
         {notice ||
           snapshot.warning ||
           (needsSession
-            ? 'C ile izlemek istediğin oturumu seç.'
+            ? 'Press C to choose a session.'
             : following
-              ? 'Yeni açıklamalar burada devam eder.'
-              : 'Geçmişi okuyorsun · End ile bugüne dön.')}
+              ? 'New explanations continue here.'
+              : 'Reading history · End returns to the latest.')}
       </Text>
       <Text color={c.accent} wrap="truncate-end">
-        {snapshot.learning === 'paused'
-          ? '[B Başlat] · S ayarlar · Q kapat'
-          : '[D Durdur] · Q kapat'}
+        {snapshot.learning === 'paused' ? '[B Start] · S settings · Q close' : '[D Stop] · Q close'}
       </Text>
       <Text color={c.muted} wrap="truncate-end">
-        ↑↓ kaydır{lesson ? ' · Enter soru sor' : snapshot.events.length ? ' · Enter açıkla' : ''}
+        ↑↓ scroll{lesson ? ' · Enter ask' : snapshot.events.length ? ' · Enter explain' : ''}
       </Text>
     </Box>
   );

@@ -35,7 +35,7 @@ async function fixture(overrides: NodeJS.ProcessEnv = {}) {
   );
   await writeFile(path.join(root, 'settings.json'), 'preserve user preferences');
   const log = path.join(d, 'calls.jsonl');
-  const fixtureApp = `console.log(process.argv.includes('--headless') ? ${JSON.stringify('# Agent Academy\nDEMO FIXTURE\nGerçek test sonuçları')} : 'Agent Academy --headless');`;
+  const fixtureApp = `console.log(process.argv.includes('--headless') ? ${JSON.stringify('# Agent Academy\nDEMO FIXTURE\nActual test results')} : 'Agent Academy --headless');`;
   await writeFile(log, '');
   await symlink(process.execPath, path.join(bin, 'node'));
   for (const name of ['npm', 'git', 'herdr']) {
@@ -99,7 +99,7 @@ it('previews source installation without dependency/build/registration writes', 
 it.each([
   { env: { TEST_HERDR_VERSION: 'herdr 0.9.2' }, message: 'Herdr >=0.9.3' },
   { env: { TEST_NPM_VERSION: '8.0.0' }, message: 'npm >=9' },
-  { env: { TEST_HERDR_VERSION: 'unknown' }, message: 'Sürüm okunamadı' },
+  { env: { TEST_HERDR_VERSION: 'unknown' }, message: 'Could not read version' },
 ])(
   'fails incompatible prerequisites before changing the installation: $message',
   async ({ env, message }) => {
@@ -180,7 +180,7 @@ it('detects changed build artifacts before executing them during verification', 
   );
   await expect(f.run(['--check'])).rejects.toMatchObject({
     code: 5,
-    stderr: expect.stringContaining('bütünlüğü'),
+    stderr: expect.stringContaining('integrity'),
   });
   await expect(access(marker)).rejects.toThrow();
 });

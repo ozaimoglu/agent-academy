@@ -38,7 +38,7 @@ it('migrates technology-specific priorities to general learning goals without lo
 it('does not silently replace malformed settings', async () => {
   const dir = await temp();
   await writeFile(path.join(dir, 'settings.json'), 'broken');
-  await expect(loadConfig(dir)).rejects.toThrow('Ayarlar');
+  await expect(loadConfig(dir)).rejects.toThrow('settings');
 });
 it('requires endpoint/model-specific external consent and never stores a raw key', async () => {
   const dir = await temp();
@@ -50,12 +50,12 @@ it('requires endpoint/model-specific external consent and never stores a raw key
     baseUrl: 'https://example.com/v1',
     keyEnv: 'ACADEMY_API_KEY',
   };
-  await expect(saveConfig(dir, config)).rejects.toThrow('izni');
+  await expect(saveConfig(dir, config)).rejects.toThrow('consent');
   config.provider.consent = consentKey(config.provider);
   await saveConfig(dir, config);
   expect(await readFile(path.join(dir, 'settings.json'), 'utf8')).not.toContain('secret-value');
   config.provider.model = 'different';
-  expect(() => validateProvider(config.provider)).toThrow('izni');
+  expect(() => validateProvider(config.provider)).toThrow('consent');
 });
 it('requires explicit remote mode for LAN and rejects insecure remote URLs', () => {
   const p = {
@@ -67,7 +67,7 @@ it('requires explicit remote mode for LAN and rejects insecure remote URLs', () 
   expect(() => validateProvider(p)).toThrow('loopback');
   expect(() => validateProvider({ ...p, kind: 'remote' })).toThrow('HTTPS');
   expect(() => validateProvider({ ...p, baseUrl: 'http://user:password@localhost/v1' })).toThrow(
-    'kimlik',
+    'credentials',
   );
 });
 it('redacts obvious secrets and terminal control sequences before persistence or upload', () => {
@@ -92,11 +92,11 @@ it('limits source reads to the selected project and excludes secrets, symlink es
   expect((await readSource(root, 'safe.ts')).text).toContain('1 │ const answer');
   await writeFile(path.join(d, 'outside'), 'secret');
   await symlink(path.join(d, 'outside'), path.join(root, 'escape'));
-  await expect(readSource(root, 'escape')).rejects.toThrow('Proje dışı');
+  await expect(readSource(root, 'escape')).rejects.toThrow('outside the project');
   await writeFile(path.join(root, '.env'), 'TOKEN=secret');
-  await expect(readSource(root, '.env')).rejects.toThrow('hassas');
+  await expect(readSource(root, '.env')).rejects.toThrow('sensitive');
   await writeFile(path.join(root, 'large'), 'x'.repeat(600000));
-  await expect(readSource(root, 'large')).rejects.toThrow('boyut');
+  await expect(readSource(root, 'large')).rejects.toThrow('size');
 });
 it('redacts prefixed environment secrets, authorization headers and database URL passwords', () => {
   const out = redact(
@@ -113,8 +113,8 @@ it('binds remote source consent to the canonical selected project', () => {
     baseUrl: 'https://example.com/v1',
   };
   p.consent = consentKey(p);
-  expect(() => validateProvider(p, '/project/a')).toThrow('Bu proje');
+  expect(() => validateProvider(p, '/project/a')).toThrow('for this project');
   p.approvedProjects = [consentKey(p, '/project/a')];
   expect(() => validateProvider(p, '/project/a')).not.toThrow();
-  expect(() => validateProvider(p, '/project/b')).toThrow('Bu proje');
+  expect(() => validateProvider(p, '/project/b')).toThrow('for this project');
 });

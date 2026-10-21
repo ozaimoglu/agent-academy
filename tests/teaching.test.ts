@@ -42,9 +42,9 @@ it('offline lessons preserve uncertainty and actual failure results', () => {
   ];
   const lesson = offlineLesson('s', 'VALIDATING', events);
   expect(lesson.sections).toHaveLength(11);
-  expect(lesson.sections.find((s) => s.heading === 'Kök neden')?.confidence).toBe('Hypothesis');
-  expect(lesson.sections.find((s) => s.heading === 'Nasıl doğrularız?')?.body).toContain(
-    'Çıkış: 1',
+  expect(lesson.sections.find((s) => s.heading === 'Root cause')?.confidence).toBe('Hypothesis');
+  expect(lesson.sections.find((s) => s.heading === 'How do we verify it?')?.body).toContain(
+    'Exit: 1',
   );
   expect(lesson.provider).toBe('offline');
 });
@@ -85,8 +85,8 @@ it('validates citations, downgrades generated certainty and supplies real code f
   const q = await engine.ask(lesson, 'Neden proxy?', [e], []);
   expect(q.answer[0]?.evidence).toContain(e.id);
   expect(explain.mock.calls[1]?.[1]).toContain('writer.persist');
-  expect(explain.mock.calls[0]?.[0]).toContain('GÜVENİLMEYEN');
-  expect(explain.mock.calls[0]?.[0]).toContain('paragraf sayısı limiti yok');
+  expect(explain.mock.calls[0]?.[0]).toContain('UNTRUSTED');
+  expect(explain.mock.calls[0]?.[0]).toContain('no paragraph limit');
   expect(explain.mock.calls[0]?.[0]).toContain('walkthrough');
 });
 it('rejects fabricated evidence and falls back honestly on failed or missing providers', async () => {
@@ -95,14 +95,14 @@ it('rejects fabricated evidence and falls back honestly on failed or missing pro
     name: 'bad',
     explain: async () => ({ text: modelReply('invented-id') }),
   });
-  expect((await fabricated.lesson('s', 'INVESTIGATING', [e])).error).toContain('kanıta');
+  expect((await fabricated.lesson('s', 'INVESTIGATING', [e])).error).toContain('evidence');
   const inventedWalkthrough = JSON.parse(modelReply(e.id));
   inventedWalkthrough.walkthrough[0].evidence = ['invented-id'];
   const invalidLive = new TeachingEngine(defaultConfig(), {
     name: 'bad-live',
     explain: async () => ({ text: JSON.stringify(inventedWalkthrough) }),
   });
-  expect((await invalidLive.lesson('s', 'INVESTIGATING', [e])).error).toContain('kanıta');
+  expect((await invalidLive.lesson('s', 'INVESTIGATING', [e])).error).toContain('evidence');
   const failed: LLMProvider = {
     name: 'failed',
     explain: async () => {
@@ -119,7 +119,7 @@ it('rejects fabricated evidence and falls back honestly on failed or missing pro
       [e],
       [],
     ),
-  ).rejects.toThrow('modeli');
+  ).rejects.toThrow('model');
 });
 it('exports a comprehensive Markdown debrief with observed tests, assumptions and evidence', () => {
   const events = [
@@ -132,10 +132,10 @@ it('exports a comprehensive Markdown debrief with observed tests, assumptions an
   ]);
   for (const expected of [
     'Rollback',
-    'Çıkış kodu: 1',
+    'Exit code: 1',
     'actual failure',
-    'Ödünleşimler',
-    'Doğrulanmamış',
+    'Tradeoffs',
+    'Unverified',
     'src/A.java',
     events[1]!.id,
   ])

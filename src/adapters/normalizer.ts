@@ -1,5 +1,6 @@
 import type { AcademyEvent, EventKind } from '../core/types.js';
 import { hash, safeText } from '../core/privacy.js';
+import { isInjectedMessage } from '../core/language.js';
 
 function textContent(content: unknown): string {
   if (typeof content === 'string') return content;
@@ -40,6 +41,7 @@ export class SessionEventNormalizer {
     const time = typeof r.timestamp === 'string' ? r.timestamp : '1970-01-01T00:00:00.000Z';
     const create = (kind: EventKind, value: unknown, extra: Partial<AcademyEvent> = {}) => {
       const text = safeText(value);
+      if (kind === 'task' && (!text.trim() || isInjectedMessage(text))) return [];
       const identity = extra.callId ? `${kind}|${extra.callId}` : `${this.turnId}|${kind}|${text}`;
       return [
         {
@@ -133,7 +135,7 @@ export class SessionEventNormalizer {
       if (['patch_apply_end', 'turn_diff'].includes(p.type))
         return create('edit', p.unified_diff ?? p.changes ?? p, { callId: p.call_id });
       if (['task_complete', 'turn_complete', 'turn_completed'].includes(p.type))
-        return create('completed', p.last_agent_message ?? 'Codex turu tamamlandı.');
+        return create('completed', p.last_agent_message ?? 'Codex turn completed.');
       if (['turn_aborted', 'error'].includes(p.type))
         return create('error', p.message ?? p.reason ?? p.type);
       return [];
@@ -142,12 +144,7 @@ export class SessionEventNormalizer {
     if (p.type === 'message' && ['user', 'assistant'].includes(p.role)) {
       const text = textContent(p.content);
       // System-injected environment/instructions are not a user's engineering task.
-      if (
-        !text ||
-        p.channel === 'analysis' ||
-        /^\s*<(?:environment_context|user_instructions|permissions|INSTRUCTIONS)/i.test(text)
-      )
-        return [];
+      if (!text || p.channel === 'analysis' || isInjectedMessage(text)) return [];
       return create(p.role === 'user' ? 'task' : 'message', text);
     }
     if (['function_call', 'custom_tool_call'].includes(p.type)) {

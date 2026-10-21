@@ -1,6 +1,6 @@
 # Agent Academy · Kullanım rehberi
 
-**Codex çalışırken, sen mühendisliği öğren.** Ubuntu 24.04 ve Herdr için Türkçe, yerel öncelikli bir terminal öğrenme arkadaşı. Kodlama ajanının oturumunu gözlemler; görevleri, hataları, değişiklikleri ve gerçek test sonuçlarını kanıta bağlı derslere dönüştürür. Codex’e giriş göndermez ve uygulama deponuzu değiştirmez.
+**Codex çalışırken, sen mühendisliği öğren.** Ubuntu 24.04 ve Herdr için yerel öncelikli bir terminal öğrenme arkadaşı. Arayüz İngilizcedir; anlatım dili Codex’e yazdığınız mesajlardan otomatik anlaşılır. Kodlama ajanının oturumunu gözlemler; görevleri, hataları, değişiklikleri ve gerçek test sonuçlarını kanıta bağlı derslere dönüştürür. Codex’e giriş göndermez ve uygulama deponuzu değiştirmez.
 
 Bu MVP çalışır uygulama kodunu, Herdr plugin’ini, onboarding’i, SQLite kalıcılığını, gerçek Codex JSONL gözlemini, OpenAI uyumlu sağlayıcıyı, Q&A ve Markdown raporlarını içerir. API anahtarı olmadan çevrimdışı kullanılabilir. Derin teknoloji açıklamaları ve soru-cevap için bir açıklama modeli gerekir.
 
@@ -24,7 +24,7 @@ herdr plugin action invoke local.agent-academy.open
 
 Sağda varsayılan %38 genişliğinde kalıcı bir terminal pane’i açılır. Codex normal biçimde çalışmaya devam eder. İlk açılışta dört kısa ekran gelir: derinlik, öğretim tarzı, genel öğrenme odağı ve açıklama sağlayıcısı. Varsayılanlar: **Derinlemesine**, görsel + kod + temeller + senior mühendis yaklaşımı, projedeki tüm konular ve çevrimdışı sağlayıcı. Java/Spring/TypeScript gibi teknoloji seçimi sorulmaz; ilgili teknoloji gerçek proje kanıtlarından belirlenir. Eski Spring tercihi temel kavramlara, frontend tercihi kod okumaya taşınır; sağlayıcı ayarları korunur.
 
-**Panel açılınca veya onboarding kaydedilince otomatik öğrenme başlamaz.** Sağdaki Academy pane’ine odaklanıp **B Başlat** ile seçtiğiniz görev için öğrenmeyi açın. **D Durdur**, yeni olay/kaynak/Git toplamayı durdurur ve devam eden model isteğini iptal eder. Codex turu bitince son rapor hazırlanır, sonra Academy yeniden bekler. Yeni bir görev için tekrar B gerekir. Tamamlanma işareti olmadan farklı bir kullanıcı görevi görülürse de beklemeye geçer.
+**Panel açılınca veya onboarding kaydedilince otomatik öğrenme başlamaz.** Sağdaki Academy pane’ine odaklanıp **B Start** ile seçtiğiniz görev için öğrenmeyi açın. **D Stop**, yeni olay/kaynak/Git toplamayı durdurur ve devam eden model isteğini iptal eder. Codex turu bitince son rapor hazırlanır, sonra Academy yeniden bekler. Yeni bir görev için tekrar B gerekir. Tamamlanma işareti olmadan farklı bir kullanıcı görevi görülürse de beklemeye geçer.
 
 Beklemede yalnızca yerel oturum keşfi yapılır; otomatik model isteği veya kota tüketimi yoktur. Durdurulmuş aralıktaki tamamlanmış işler sonraki Başlat’ta işlenmez. Devam eden görevin son görev mesajı bağlam olarak alınabilir; önceki inceleme olayları geriye dönük toplanmaz. Her öğrenme aralığının raporu ayrı tutulur. Önceki dersleri okumak ücretsizdir; **Enter** ile yazıp gönderdiğiniz sorular model kullanabilir. İptal, sağlayıcının zaten işlediği tokenları geri almaz.
 
@@ -64,6 +64,8 @@ npm start -- --project /absolute/path/to/project
 Yalnızca seçili projenin kanonik cwd’siyle eşleşen oturumlar kabul edilir. Codex’i bir alt dizinde çalıştırdıysanız aynı alt dizini seçin. Herdr eylemi hedef pane’in gerçek foreground cwd’sini kullanır.
 
 ## Tek anlatım: Yanında oturan kıdemli mühendis gibi
+
+Dil seçmeniz gerekmez: yalnızca sizin Codex’e yazdığınız doğal dil mesajları değerlendirilir. Kod, log, alıntı veya ajan yanıtının dili anlatım dilini belirlemez. Açıkça başka bir dilde yazarsanız sonraki açıklamalar o dili izler; `push` gibi kısa komutlar önceki dili korur. Dil algılama yereldir ve ayrı model isteği oluşturmaz. İlk B başlangıcında mevcut sınırlı oturum sonundan yalnızca dil bilgisi alınır; önceki tamamlanmış işler tekrar işlenmez veya modele gönderilmez. Çevrimdışı anlatım Türkçe ve İngilizce içerir; diğer diller yapılandırılan modelden gelir. Eski `language: "tr"` ayarı otomatik moda geçer; model, tercihler ve veri paylaşım izinleri korunur.
 
 Panelde tek bir sohbet akışı vardır. Codex ilerledikçe **neye bakıyoruz → bulgu veya olası neden → önce/sonra kodu ve beklenen etkisi → gözlenen kontrol sonucu** anlatılır. İlk gözlem hemen açıklanır; model yanıtı hazırlanırken ekran boş kalmaz. Kod örnekleri ve anlamayı kolaylaştıran küçük şemalar aynı açıklamanın içindedir. Şemalar yalnızca verilen kanıtlara bağlı ilişkileri gösterir.
 
@@ -114,15 +116,15 @@ Ortam değişkeni Academy işlemi tarafından görülebilmeli. Herdr’ün plugi
 
 HTTP sağlayıcı `/chat/completions` kullanır. Yerel sunucuda `max_tokens`, uzak API’de varsayılan `max_completion_tokens` gönderir. Eski uyumlu sunucular için gelişmiş ayarlarda token alanını `max_tokens` yapabilirsiniz. Her uyumlu sunucu/model yapılandırılmış JSON üretimini eşit derecede iyi desteklemez; geçersiz veya kesilmiş yanıtta açık hata ve çevrimdışı kanıt dersi gösterilir.
 
-Varsayılan otomatik analiz aralığı 60 saniye, seçilmiş kanıt bütçesi 40.000 karakter, çıktı bütçesi 8.192 tokendır. Derin modda birkaç paragraf sınırı yoktur; çıktı bütçesi 32.768’e kadar ayarlanabilir. Görev, uygulama, doğrulama ve tamamlanma gibi aşamalar birleştirilir; her shell komutu model çağrısı üretmez. `autoAnalyze=false` otomatik açıklamayı durdurur; G elle açıklama ister. Gerçek token kullanımı mevcutsa kaydedilir; yoksa açıkça **tahmini** etiketiyle gösterilir. Para cinsinden maliyet tahmin edilmez. Model hatasında sağlayıcının kullanım verisi dönmemişse tüketim bilinemez.
+Varsayılan otomatik analiz aralığı 60 saniye, seçilmiş kanıt bütçesi 40.000 karakter, çıktı bütçesi 8.192 tokendır. Derin modda birkaç paragraf sınırı yoktur; çıktı bütçesi 32.768’e kadar ayarlanabilir. Görev, uygulama, doğrulama ve tamamlanma gibi aşamalar birleştirilir; her shell komutu model çağrısı üretmez. `autoAnalyze=false` otomatik açıklamayı durdurur; ilk açıklama yoksa Enter elle açıklama ister. Gerçek token kullanımı mevcutsa kaydedilir; yoksa açıkça **tahmini** etiketiyle gösterilir. Para cinsinden maliyet tahmin edilmez. Model hatasında sağlayıcının kullanım verisi dönmemişse tüketim bilinemez.
 
 ### Mevcut Codex CLI
 
 **Mevcut Codex/ChatGPT kotanızı kullanabilirsiniz.** Ayrı API anahtarı gerekmez. Codex CLI 0.163.x ve macOS/Linux gerekir. `codex login status` çıktısı ChatGPT girişini göstermeli; API anahtarıyla giriş bu seçenek için kabul edilmez.
 
 1. Panelde **S → 4** açın.
-2. **Codex kotası / ChatGPT girişi** üzerine gidip **Space** ile seçin.
-3. **Enter** ile ilerleyin; proje ve veri paylaşımı bilgisini okuyup **O** ile onaylayın.
+2. **Codex quota / ChatGPT login** üzerine gidip **Space** ile seçin.
+3. **Enter** ile ilerleyin; proje ve veri paylaşımı bilgisini okuyup **Y** ile onaylayın.
 4. Modeli boş bırakabilirsiniz: Codex’in yerleşik varsayılanı kullanılır. **A** ile model, analiz sıklığı, bağlam bütçesi, zaman aşımı ve otomatik analiz değiştirilebilir. Giriş deposu varsayılan `auto`; mevcut girişinizi bulamazsa Codex’in kullandığı `file` veya `keyring` değerini seçin. Kontrol ve model isteği aynı depoyu kullanır; Academy kimlik bilgilerini taşımaz.
 
 Öğretici istekleri **aynı hesabın kullanım limitinden düşer**; ücretsiz ek kota değildir. Seçilmiş kod parçaları ve kanıtlar Codex üzerinden OpenAI’a gönderildiği için her proje için açık izin gerekir. Academy token sayacı öğretici kullanımını gösterir; kalan kota yüzdesi değildir. Kalan limiti Codex’in `/status` ekranından kontrol edin. Kota hatasında otomatik tekrar veya ücretli API’ye geçiş yapılmaz.

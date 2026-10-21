@@ -12,46 +12,46 @@ import {
 import { theme as c } from './theme.js';
 
 const depths: [string, string, string][] = [
-  ['quick', 'Hızlı Özet', 'Ne değişti, neden değişti? · 1–2 dk'],
-  ['balanced', 'Dengeli', 'Problem, neden ve kararlar · örneklerle'],
-  ['deep', 'Derinlemesine', 'Mekanizmalar, kod, alternatifler ve testler · önerilen'],
+  ['quick', 'Quick summary', 'What changed and why? · 1–2 min'],
+  ['balanced', 'Balanced', 'Problem, cause and decisions · with examples'],
+  ['deep', 'In depth', 'Mechanisms, code, alternatives and tests · recommended'],
 ];
 const styles: [string, string, string][] = [
-  ['visual', 'Görsel', 'Diyagramlar ve çağrı akışları'],
-  ['code', 'Kod üzerinden', 'Gerçek proje koduyla açıklamalar'],
-  ['fundamentals', 'Temelden başlayarak', 'Önce doğru zihinsel model'],
-  ['senior', 'Senior mühendis yaklaşımı', 'Mimari, ödünleşimler ve üretim riskleri'],
-  ['interactive', 'Etkileşimli', 'Takip soruları ve isteğe bağlı bilgi kontrolü'],
+  ['visual', 'Visual', 'Diagrams and call flows'],
+  ['code', 'Through code', 'Explanations using actual project code'],
+  ['fundamentals', 'From fundamentals', 'Build the right mental model first'],
+  ['senior', 'Senior engineer approach', 'Architecture, tradeoffs and production risks'],
+  ['interactive', 'Interactive', 'Follow-up questions and optional knowledge checks'],
 ];
 const priorities = learningPriorities;
 const providers: [string, string, string][] = [
-  ['offline', 'Çevrimdışı gözlem', 'API anahtarı gerekmez · veri dışarı çıkmaz'],
-  ['local', 'Ollama / yerel model', 'Loopback OpenAI uyumlu sunucu'],
-  ['remote', 'Uzak OpenAI uyumlu API', 'Seçili kod ve kanıtlar dış servise gönderilir'],
+  ['offline', 'Offline observation', 'No API key · no data leaves your device'],
+  ['local', 'Ollama / local model', 'Loopback OpenAI-compatible server'],
   [
-    'codex',
-    'Codex kotası / ChatGPT girişi',
-    'API anahtarı gerekmez · seçili kanıtlar OpenAI’a gider',
+    'remote',
+    'Remote OpenAI-compatible API',
+    'Selected code and evidence go to an external service',
   ],
+  ['codex', 'Codex quota / ChatGPT login', 'No API key · selected evidence goes to OpenAI'],
 ];
 const titles = [
-  'Ne kadar derin öğrenmek istiyorsun?',
-  'Konuları nasıl öğrenmeyi tercih edersin?',
-  'Öğrenirken neye odaklanalım?',
-  'Açıklamaları hangi model hazırlasın?',
+  'How deeply would you like to learn?',
+  'How do you prefer to learn?',
+  'What should we focus on?',
+  'Which model should explain?',
 ];
 const allFields = [
   ['model', 'Model'],
-  ['baseUrl', 'API adresi'],
-  ['keyEnv', 'Anahtar ortam değişkeni'],
-  ['minIntervalSeconds', 'En az analiz aralığı (sn)'],
-  ['maxOutputTokens', 'Çıktı token bütçesi'],
-  ['tokenParameter', 'Token alanı (uzak API)'],
-  ['contextChars', 'Bağlam karakter bütçesi'],
-  ['panelWidth', 'Panel genişliği (%)'],
-  ['autoAnalyze', 'Otomatik analiz (true/false)'],
-  ['codexTimeoutSeconds', 'Codex zaman bütçesi (sn)'],
-  ['codexCredentialStore', 'Codex giriş deposu (auto/file/keyring)'],
+  ['baseUrl', 'API address'],
+  ['keyEnv', 'API key environment variable'],
+  ['minIntervalSeconds', 'Minimum analysis interval (s)'],
+  ['maxOutputTokens', 'Output token budget'],
+  ['tokenParameter', 'Token field (remote API)'],
+  ['contextChars', 'Context character budget'],
+  ['panelWidth', 'Panel width (%)'],
+  ['autoAnalyze', 'Automatic analysis (true/false)'],
+  ['codexTimeoutSeconds', 'Codex timeout (s)'],
+  ['codexCredentialStore', 'Codex credentials (auto/file/keyring)'],
 ] as const;
 export function OnboardingWizard({
   initial,
@@ -183,7 +183,7 @@ export function OnboardingWizard({
   useInput((input, key) => {
     if (saving) return;
     if (consent) {
-      if (input === 'o' || input === 'O') {
+      if (input === 'y' || input === 'Y') {
         setConsent(false);
         void save(true);
       } else if (key.escape) {
@@ -263,7 +263,7 @@ export function OnboardingWizard({
         <Text color={c.accent} bold>
           ◈ AGENT ACADEMY
         </Text>
-        <Text color={c.muted}> / {settings ? 'AYARLAR' : 'HOŞ GELDİN'}</Text>
+        <Text color={c.muted}> / {settings ? 'SETTINGS' : 'WELCOME'}</Text>
       </Box>
       <Text color={c.muted}>
         {['01', '02', '03', '04'].map((n, i) => (i === step ? `● ${n}` : `○ ${n}`)).join(' ── ')}{' '}
@@ -277,32 +277,32 @@ export function OnboardingWizard({
       {consent ? (
         <Box flexDirection="column" borderStyle="round" borderColor={c.warning} paddingX={1}>
           <Text bold color={c.warning}>
-            Dış servise veri gönderme izni
+            External data sharing consent
           </Text>
           <Text wrap="truncate-middle">{providerDestination(config.provider)}</Text>
-          <Text wrap="truncate-middle">Proje: {project ?? 'seçili bağlam'}</Text>
+          <Text wrap="truncate-middle">Project: {project ?? 'selected context'}</Text>
           <Text>
             Model:{' '}
             {config.provider.model ||
-              (config.provider.kind === 'codex' ? 'Codex CLI varsayılanı' : '(belirlenmedi)')}
+              (config.provider.kind === 'codex' ? 'Codex CLI default' : '(not set)')}
           </Text>
           <Text>
             {compact
-              ? 'Seçili mesajlar, komut sonuçları, diff ve kod parçaları dış servise gider. Maskeleme tüm sırları yakalayamaz.'
-              : 'Seçili görevin mesajları, komut sonuçları, kod farkları ve kaynak parçaları bu adrese gönderilecek. Maskeleme tüm sırları yakalayamaz.'}
+              ? 'Selected messages, results, diffs and code go to the service. Redaction may miss secrets.'
+              : 'Selected task messages, command results, diffs and source excerpts will be sent to this destination. Redaction may miss secrets.'}
           </Text>
           {config.provider.kind === 'codex' && (
             <Text>
               {compact
-                ? 'Aynı Codex kotası kullanılır; API anahtarı yok.'
-                : 'Açıklamalar mevcut ChatGPT/Codex kullanım limitinden düşer. Ayrı API anahtarı kullanılmaz.'}
+                ? 'Uses your Codex quota; no API key.'
+                : 'Explanations use your existing ChatGPT/Codex limits. No separate API key is used.'}
             </Text>
           )}
-          <Text color={c.accent}>O: açıkça onayla ve kaydet · Esc: geri</Text>
+          <Text color={c.accent}>Y: approve and save · Esc: back</Text>
         </Box>
       ) : advanced ? (
         <Box flexDirection="column">
-          <Text color={c.muted}>Enter: düzenle · A / Esc: sağlayıcıya dön</Text>
+          <Text color={c.muted}>Enter: edit · A / Esc: back to provider</Text>
           {fields.map(([k, label], i) => (
             <Box key={k} flexDirection="column">
               <Text color={field === i ? c.accent : c.text}>
@@ -318,8 +318,8 @@ export function OnboardingWizard({
           ))}
           <Text color={c.muted}>
             {config.provider.kind === 'codex'
-              ? 'Model boşsa CLI varsayılanı. Çıktı token sınırı CLI tarafından sunulmuyor.'
-              : 'Anahtarın kendisini yazma; yalnızca ortam değişkeninin adını gir.'}
+              ? 'Leave model blank for the CLI default. The CLI has no output token setting.'
+              : 'Enter the environment variable name, not the API key.'}
           </Text>
         </Box>
       ) : (
@@ -348,30 +348,32 @@ export function OnboardingWizard({
         <Box marginTop={1} flexDirection="column">
           <Text color={c.muted}>
             {config.provider.kind === 'offline'
-              ? 'Gözlenen adımları okuyabilirsin. Derin açıklamalar ve soruların için daha sonra model ekleyebilirsin.'
-              : `Model: ${config.provider.model || (config.provider.kind === 'codex' ? 'CLI varsayılanı' : 'A ile model adını gir')} · ${config.provider.minIntervalSeconds} sn`}
+              ? 'Follow observed steps now. Add a model later for deeper explanations and questions.'
+              : `Model: ${config.provider.model || (config.provider.kind === 'codex' ? 'CLI default' : 'press A to set a model')} · ${config.provider.minIntervalSeconds} s`}
           </Text>
           <Text color={c.muted}>
             {config.provider.kind === 'codex'
-              ? 'ChatGPT girişi · ortak Codex kotası · proje için açık izin gerekir.'
-              : 'Yerel sunucuda da gerçekten yerel model kullan; bulut modelleri veri iletebilir.'}
+              ? 'ChatGPT login · shared Codex quota · project consent required.'
+              : 'Use a local model on a local server; cloud models may send data externally.'}
           </Text>
-          <Text color={c.accent}>A: gelişmiş ayarlar</Text>
+          <Text color={c.accent}>A: advanced settings</Text>
         </Box>
       )}
       {error && <Text color={c.error}>{error}</Text>}
       <Box marginTop={1}>
         <Text color={c.muted}>
           {saving
-            ? 'Kaydediliyor…'
+            ? 'Saving…'
             : advanced
-              ? 'Alanlar yerel ayar dosyasına kaydedilir.'
-              : '↑↓ gezin · Space seç · Enter ' + (step === 3 ? 'kaydet' : 'devam') + ' · Esc geri'}
-          {settings ? ' · 1–4 doğrudan düzenle' : ''}
+              ? 'Fields are saved to your local settings file.'
+              : '↑↓ navigate · Space select · Enter ' +
+                (step === 3 ? 'save' : 'next') +
+                ' · Esc back'}
+          {settings ? ' · 1–4 jump to a step' : ''}
         </Text>
       </Box>
       {step === 3 && !consent && !advanced && (
-        <Text color={c.muted}>Panel beklemede açılır. B başlat · D durdur.</Text>
+        <Text color={c.muted}>The panel opens in standby. B start · D stop.</Text>
       )}
     </Box>
   );

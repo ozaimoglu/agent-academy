@@ -14,21 +14,21 @@ academy_lock_owned=0
 
 usage() {
   cat <<'HELP'
-Agent Academy · Kaynak kurulum ve doğrulama
+Agent Academy · Source installation and verification
 
-Standart dağıtım: herdr plugin install ozaimoglu/agent-academy
+Managed installation: herdr plugin install ozaimoglu/agent-academy
 
-./scripts/install.sh             Kontrol et, kilitli bağımlılıkları yükle, derle ve doğrula
-./scripts/install.sh --link      Ardından bu checkout'u Herdr'e kaydet
-./scripts/install.sh --check     Mevcut kurulumu doğrula; derleme/kayıt yapma
-./scripts/install.sh --dry-run   Ortamı kontrol et ve uygulanacak adımları göster
-./scripts/install.sh --build-only  Herdr'ün yönetilen kurulum aşaması
+./scripts/install.sh             Check, install locked dependencies, build and verify
+./scripts/install.sh --link      Then register this checkout with Herdr
+./scripts/install.sh --check     Verify the current installation; do not build or register
+./scripts/install.sh --dry-run   Check the environment and preview the steps
+./scripts/install.sh --build-only  Build for Herdr’s managed installation
 
-Çıkış: 0 başarılı · 2 önkoşul/argüman · 3 bağımlılık · 4 derleme · 5 doğrulama · 6 Herdr kaydı
-Kullanıcı tercihleri, dersler ve Codex ayarları değiştirilmez. Panel otomatik açılmaz.
+Exit: 0 success · 2 prerequisite/argument · 3 dependency · 4 build · 5 verification · 6 Herdr registration
+User preferences, lessons and Codex settings are preserved. The panel does not open automatically.
 HELP
 }
-fail() { printf '\nHATA [%s]: %s\n' "$1" "$2" >&2; exit "$1"; }
+fail() { printf '\nERROR [%s]: %s\n' "$1" "$2" >&2; exit "$1"; }
 step() { printf '\n[%s] %s\n' "$1" "$2"; }
 cleanup() {
   local status=$?
@@ -40,7 +40,7 @@ cleanup() {
     elif [[ "$academy_had_dist" == 0 ]]; then
       rm -rf -- "$academy_root/dist"
     fi
-    printf '%s\n' 'Önceki uygulama çıktısı geri yüklendi.' >&2
+    printf '%s\n' 'Restored the previous application build.' >&2
   fi
   if [[ -n "$academy_stage" ]]; then rm -rf -- "$academy_stage"; fi
   if [[ "$academy_lock_owned" == 1 ]]; then
@@ -60,53 +60,53 @@ for academy_arg in "$@"; do
     --dry-run) academy_dry_run=1 ;;
     --build-only) academy_host_build=1 ;;
     --help|-h) usage; exit 0 ;;
-    *) usage >&2; fail 2 "Bilinmeyen argüman: $academy_arg" ;;
+    *) usage >&2; fail 2 "Unknown argument: $academy_arg" ;;
   esac
 done
 if [[ "$academy_check" == 1 && ( "$academy_link" == 1 || "$academy_host_build" == 1 || "$academy_dry_run" == 1 ) ]]; then
-  fail 2 '--check tek başına kullanılmalı.'
+  fail 2 '--check must be used alone.'
 fi
-if [[ "$academy_host_build" == 1 && "$academy_link" == 1 ]]; then fail 2 '--build-only ve --link birlikte kullanılamaz.'; fi
+if [[ "$academy_host_build" == 1 && "$academy_link" == 1 ]]; then fail 2 '--build-only and --link cannot be combined.'; fi
 cd -- "$academy_root"
 
-printf '%s\n' 'AGENT ACADEMY · Kurulum'
-step '1/5' 'Önkoşullar ve çalışma ortamı'
-command -v node >/dev/null 2>&1 || fail 2 'Node.js >=22.19 bulunamadı. https://nodejs.org/en/download'
+printf '%s\n' 'AGENT ACADEMY · Installation'
+step '1/5' 'Prerequisites and environment'
+command -v node >/dev/null 2>&1 || fail 2 'Node.js >=22.19 was not found. https://nodejs.org/en/download'
 # Keep this bootstrap compatible with older Node versions so the error is actionable.
-node -e 'const v=process.versions.node.split(".").map(Number);if(v[0]<22||(v[0]===22&&v[1]<19)){console.error("Node.js >=22.19 gerekli; kurulu: "+process.version);process.exit(1)}' || fail 2 'Önce Node.js sürümünü güncelleyin.'
+node -e 'const v=process.versions.node.split(".").map(Number);if(v[0]<22||(v[0]===22&&v[1]<19)){console.error("Node.js >=22.19 is required; installed: "+process.version);process.exit(1)}' || fail 2 'Update Node.js first.'
 if [[ "$academy_link" == 1 ]]; then
-  node --disable-warning=ExperimentalWarning scripts/preflight.mjs --require-herdr || fail 2 'Önkoşul kontrolü başarısız; sistemde otomatik değişiklik yapılmadı.'
+  node --disable-warning=ExperimentalWarning scripts/preflight.mjs --require-herdr || fail 2 'Prerequisite check failed; no automatic system changes were made.'
 else
-  node --disable-warning=ExperimentalWarning scripts/preflight.mjs || fail 2 'Önkoşul kontrolü başarısız; sistemde otomatik değişiklik yapılmadı.'
+  node --disable-warning=ExperimentalWarning scripts/preflight.mjs || fail 2 'Prerequisite check failed; no automatic system changes were made.'
 fi
 
 if [[ "$academy_dry_run" == 1 ]]; then
-  printf '\n%s\n' 'PLAN · hiçbir bağımlılık, derleme çıktısı veya Herdr kaydı değiştirilmedi.'
-  printf '%s\n' '  2. npm ci --include=dev --no-audit --no-fund' '  3. Geçici dizine TypeScript derlemesi' '  4. SQLite + CLI + çevrimdışı uçtan uca doğrulama ve kurulum kaydı' '  5. Doğrulanan dist çıktısını etkinleştir'
+  printf '\n%s\n' 'PLAN · no dependencies, build output or Herdr registration changed.'
+  printf '%s\n' '  2. npm ci --include=dev --no-audit --no-fund' '  3. Build TypeScript in a temporary directory' '  4. Verify SQLite + CLI + offline pipeline and record the installation' '  5. Activate the verified dist build'
   if [[ "$academy_link" == 1 ]]; then printf '  6. herdr plugin link %q\n' "$academy_root"; fi
   exit 0
 fi
 if [[ "$academy_check" == 1 ]]; then
-  node --disable-warning=ExperimentalWarning scripts/verify-install.mjs || fail 5 'Kurulum doğrulanamadı. Kaynak kurulum scriptini yeniden çalıştırın.'
+  node --disable-warning=ExperimentalWarning scripts/verify-install.mjs || fail 5 'Could not verify installation. Run the source installer again.'
   academy_success=1
   exit 0
 fi
 
-mkdir -- "$academy_root/.academy-install.lock" 2>/dev/null || fail 2 'Başka bir kurulum kilidi var: .academy-install.lock. Devam eden kurulumu bekleyin.'
+mkdir -- "$academy_root/.academy-install.lock" 2>/dev/null || fail 2 'Another installation holds .academy-install.lock. Wait for it to finish.'
 academy_lock_owned=1
 printf '%s\n' "$$" > "$academy_root/.academy-install.lock/pid"
-academy_stage="$(mktemp -d "$academy_root/.academy-install.XXXXXX")" || fail 4 'Kurulum dizinine yazılamıyor.'
-step '2/5' 'Kilit dosyasından bağımlılık kurulumu'
+academy_stage="$(mktemp -d "$academy_root/.academy-install.XXXXXX")" || fail 4 'Cannot write to the installation directory.'
+step '2/5' 'Installing dependencies from the lockfile'
 # TypeScript is needed at install time even when the host sets NODE_ENV=production.
-npm ci --include=dev --no-audit --no-fund || fail 3 'Bağımlılıklar yüklenemedi. Ağ/registry erişimini ve npm çıktısını kontrol edin.'
-step '3/5' 'Yalıtılmış uygulama derlemesi'
-npm run build -- --outDir "$academy_stage/dist" --sourceMap false --declaration false || fail 4 'Derleme başarısız; önceki dist çıktısı korundu.'
-cp -R -- fixtures "$academy_stage/fixtures" || fail 4 'Kabul testi fixture dosyaları hazırlanamadı.'
-step '4/5' 'Kurulum kabul kontrolleri'
-node --disable-warning=ExperimentalWarning scripts/verify-install.mjs --dist "$academy_stage/dist" --record || fail 5 'Yeni çıktı doğrulanamadı; önceki dist çıktısı korundu.'
+npm ci --include=dev --no-audit --no-fund || fail 3 'Could not install dependencies. Check network/registry access and npm output.'
+step '3/5' 'Building in an isolated directory'
+npm run build -- --outDir "$academy_stage/dist" --sourceMap false --declaration false || fail 4 'Build failed; the previous dist build was preserved.'
+cp -R -- fixtures "$academy_stage/fixtures" || fail 4 'Could not prepare acceptance test fixtures.'
+step '4/5' 'Installation acceptance checks'
+node --disable-warning=ExperimentalWarning scripts/verify-install.mjs --dist "$academy_stage/dist" --record || fail 5 'Could not verify the new build; the previous dist build was preserved.'
 
-step '5/5' 'Doğrulanan uygulamayı etkinleştirme'
-if [[ -L "$academy_root/dist" ]]; then fail 5 'dist bir sembolik bağlantı; otomatik değiştirilmedi.'; fi
+step '5/5' 'Activating the verified application'
+if [[ -L "$academy_root/dist" ]]; then fail 5 'dist is a symbolic link; it was not changed automatically.'; fi
 if [[ -e "$academy_root/dist" ]]; then
   academy_had_dist=1
 fi
@@ -115,15 +115,15 @@ academy_promoted=1
 if [[ "$academy_had_dist" == 1 ]]; then mv -- "$academy_root/dist" "$academy_stage/previous-dist"; fi
 mv -- "$academy_stage/dist" "$academy_root/dist"
 if [[ "$academy_link" == 1 ]]; then
-  herdr plugin link "$academy_root" || fail 6 'Herdr kaydı başarısız; önceki uygulama çıktısı geri yükleniyor.'
+  herdr plugin link "$academy_root" || fail 6 'Herdr registration failed; restoring the previous application build.'
 fi
 academy_success=1
-printf '\n%s\n' 'BAŞARILI · Kurulum ve çevrimdışı kabul kontrolleri tamamlandı.' 'Kayıt: dist/install-info.json'
+printf '\n%s\n' 'SUCCESS · Installation and offline acceptance checks passed.' 'Receipt: dist/install-info.json'
 if [[ "$academy_host_build" == 1 ]]; then
-  printf '%s\n' 'Herdr yönetilen kurulumu kaydetmeye devam edecek.'
+  printf '%s\n' 'Herdr will continue registering the managed installation.'
 elif [[ "$academy_link" == 1 ]]; then
-  printf '%s\n' 'Herdr kaydı tamamlandı. Codex pane’inizden açın:' '  herdr plugin action invoke local.agent-academy.open'
+  printf '%s\n' 'Herdr registration complete. Open from your Codex pane:' '  herdr plugin action invoke local.agent-academy.open'
 else
-  printf '%s\n' 'Yerel demo: npm run demo' 'Herdr kaydı ayrıca isteniyorsa: ./scripts/install.sh --link'
+  printf '%s\n' 'Local demo: npm run demo' 'To also register with Herdr: ./scripts/install.sh --link'
 fi
-printf '%s\n' 'Panel beklemede açılır · B başlat · D durdur · Q kapat'
+printf '%s\n' 'The panel opens in standby · B start · D stop · Q close'
