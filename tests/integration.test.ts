@@ -144,6 +144,7 @@ it('opens an explicit right split, scopes by workspace, and never sends agent in
   expect(open).toContain('right');
   expect(open).toContain('w1:p1');
   expect(open).toContain('--no-focus');
+  expect(open).not.toContain('--workspace');
   expect(calls.find((a) => a.includes('resize'))).toContain('0.120');
   expect(
     calls.some((a) => a.includes('send-text') || a.includes('run') || a.includes('prompt')),

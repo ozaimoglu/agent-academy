@@ -25,3 +25,5 @@ Primary references:
 The host is macOS; Ubuntu commands and portability are implemented, but a real Ubuntu desktop/Herdr end-to-end run must be distinguished from tests on this host. No global Herdr/Codex configuration is changed by development.
 
 Pane resize semantics were cross-checked against https://github.com/herdrdev/herdr/blob/master/src/layout.rs (`resize_pane` / `resize_focused`): right/down increases the first-child ratio, and explicit pane resizing restores the previous focus.
+
+Split launch correction: Herdr 0.9.3 rejects `workspace_id` for split/zoomed plugin panes, even when `target_pane_id` is provided. Validate the target's workspace separately, then send the target alone. Pane entrypoints use `scripts/academy.sh` as the executable so the host resolves the launcher against the plugin root; the launcher supplies an absolute Node entrypoint while preserving the selected project cwd.

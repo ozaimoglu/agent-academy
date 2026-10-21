@@ -185,9 +185,9 @@ Remote source sharing requires explicit project-specific opt-in. HTTP explanatio
 
 **v0.1.0 MVP.** The application is implemented; validation scope is documented openly.
 
-- **55 automated tests** cover onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation.
+- **57 automated tests** cover onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation.
 - Build, lint, deterministic demo, and actual project-matching **Codex 0.163.0** command/result parsing were verified during development.
-- Herdr pane actions are implemented and contract-tested. Live Herdr socket access and real loopback HTTP tests were blocked by the development sandbox. End-to-end validation on Ubuntu and real-model explanation quality remain to be completed.
+- Herdr pane open/close actions were exercised on the installed macOS server after fixing split targeting; the launcher is tested from another project directory. Direct socket inspection and real loopback HTTP tests were restricted by the development sandbox. End-to-end validation on Ubuntu and real-model explanation quality remain to be completed.
 - Codex rollout JSONL is an internal compatibility surface, so future format changes may require adapter updates. Claude Code/OpenCode adapters, semantic call graphs, browser rendering, and automatic documentation retrieval are outside this MVP.
 
 [Full verification record →](docs/verification.md)

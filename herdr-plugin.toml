@@ -15,22 +15,22 @@ command = ["npm", "run", "build"]
 id = "academy"
 title = "Agent Academy"
 placement = "split"
-command = ["node", "--disable-warning=ExperimentalWarning", "dist/cli.js", "--pane"]
+command = ["scripts/academy.sh", "--pane"]
 
 [[actions]]
 id = "open"
 title = "Academy: aç"
 contexts = ["pane", "workspace"]
-command = ["node", "--disable-warning=ExperimentalWarning", "dist/cli.js", "--action", "open"]
+command = ["scripts/academy.sh", "--action", "open"]
 
 [[actions]]
 id = "close"
 title = "Academy: kapat"
 contexts = ["pane", "workspace"]
-command = ["node", "--disable-warning=ExperimentalWarning", "dist/cli.js", "--action", "close"]
+command = ["scripts/academy.sh", "--action", "close"]
 
 [[actions]]
 id = "toggle"
 title = "Academy: aç / kapat"
 contexts = ["pane", "workspace"]
-command = ["node", "--disable-warning=ExperimentalWarning", "dist/cli.js", "--action", "toggle"]
+command = ["scripts/academy.sh", "--action", "toggle"]

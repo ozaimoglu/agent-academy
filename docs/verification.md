@@ -6,7 +6,7 @@ Date: 2026-10-21. Host: macOS. Target: Ubuntu 24.04.
 
 - Node v22.19.0, Herdr 0.9.3 (installed schema protocol 22), Codex CLI 0.163.0.
 - `npm ci --offline`: clean lockfile installation succeeded using cached packages.
-- `npm run check`: ESLint + TypeScript strict checking, **55 passing tests across 6 files**, emitted application build.
+- `npm run check`: ESLint + TypeScript strict checking, **57 passing tests across 7 files**, emitted application build.
 - Manifest parsed with Python TOML parser; required metadata, pane placement, argv arrays and open/close/toggle entrypoints validated.
 - `node --disable-warning=ExperimentalWarning dist/cli.js --demo --headless`: full discovery → normalization → evidence/source collection → milestone classification → offline lesson → SQLite → Markdown export.
 - A real project-matching Codex 0.163.0 rollout was discovered read-only. Inspection of record _shapes_, without reading or printing reasoning content, revealed structured `event_msg.item_completed` CommandExecution records. Adapter support was added and covered by a regression test. A subsequent live read normalized 27 command/result pairs with 27 actual exit codes (counts increase as the task continues).
@@ -26,3 +26,13 @@ Date: 2026-10-21. Host: macOS. Target: Ubuntu 24.04.
 Read the README limits before relying on history completeness. Rollout JSONL is not a stable public observer API. Unsupported formats are ignored rather than invented. CLI explanation sessions are unavailable until selected-context-only, tool-free isolation can be verified. The fixture's Spring test results are explicitly synthetic records; Academy does not execute the example Java tests.
 
 The development environment also blocked manual PTY keyboard input and process cleanup. The PTY preview used isolated temporary demo data and did not send model requests.
+
+## Herdr launch regression fix
+
+The installed Herdr 0.9.3 server rejected the original split request because it contained both `target_pane_id` and `workspace_id`. Split and zoomed placement forbid `workspace_id`; the target already supplies the workspace. The open action now validates workspace ownership through `pane get` and sends only `--target-pane` for the split. A regression assertion covers the invalid combination, and CLI errors retain the server message with redaction.
+
+The manifest also uses an executable launcher resolved relative to the plugin root. The launcher passes an absolute path to `dist/cli.js`, so opening Academy from another application's cwd does not make Node search that project for Academy's files. A test exercises the launcher from an unrelated temporary directory.
+
+After rebuilding and relinking, the actual server recorded the corrected open action as `succeeded` with exit code 0 (`plugin-log-5`), and the Academy `--pane` process was running. The corresponding close action also succeeded with exit code 0 (`plugin-log-6`). This verifies live pane creation and close on this Mac; Ubuntu and real-model quality validation remain separate. CLI 0.9.5 and server 0.9.3 were protocol-compatible, so no Herdr server restart was needed.
+
+Primary validation rule: https://github.com/herdrdev/herdr/blob/v0.9.3/src/app/api/plugins/mod.rs

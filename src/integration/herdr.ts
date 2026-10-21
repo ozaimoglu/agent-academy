@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import { mkdir, readFile, writeFile, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { academyPaths, canonical, hash } from '../core/privacy.js';
+import { academyPaths, canonical, hash, safeText } from '../core/privacy.js';
 import { loadConfig } from '../storage/config.js';
 const exec = promisify(execFile);
 export const PLUGIN_ID = 'local.agent-academy';
@@ -26,17 +26,24 @@ export function createHerdrCall(env: NodeJS.ProcessEnv = process.env): HerdrCall
         maxBuffer: 1024 * 1024,
       });
       const response = JSON.parse(result.stdout);
-      if (response.error) throw new Error(response.error.code ?? 'Herdr API hatası');
+      if (response.error)
+        throw new Error(
+          [response.error.code, response.error.message].filter(Boolean).join(': ') ||
+            'Herdr API hatası',
+        );
       return response.result;
     } catch (e) {
       let reason = e instanceof Error ? e.message.slice(0, 160) : 'bağlantı yok';
       try {
         const body = JSON.parse((e as { stderr?: string }).stderr ?? '');
-        if (body.error?.code) reason = body.error.code;
+        if (body.error?.code)
+          reason = [body.error.code, body.error.message].filter(Boolean).join(': ');
       } catch {
         /* Non-JSON transport failure. */
       }
-      throw new Error(`Herdr çağrısı başarısız (${args.slice(0, 2).join(' ')}): ${reason}`);
+      throw new Error(
+        `Herdr çağrısı başarısız (${args.slice(0, 2).join(' ')}): ${safeText(reason, 600)}`,
+      );
     }
   };
 }
@@ -149,8 +156,7 @@ export async function pluginAction(
       'right',
       '--target-pane',
       target,
-      '--workspace',
-      pane.workspace_id,
+      // Split placement derives workspace from target; Herdr rejects workspace_id here.
       '--cwd',
       cwd,
       '--env',
