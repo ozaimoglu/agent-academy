@@ -1,9 +1,10 @@
 import type { AcademySnapshot } from '../core/academy.js';
-import type { Question, Section } from '../core/types.js';
+import type { ConceptKnowledge, Question, Section } from '../core/types.js';
 import { observationWalkthrough } from '../core/live.js';
 import { safeText } from '../core/privacy.js';
 import { renderDiagram } from './diagrams.js';
 import { conversationLanguage, hasLocalNarration, languageName } from '../core/language.js';
+import { citedConcept, conceptChoices, pendingConcept } from '../core/concepts.js';
 
 type StoryContext = Pick<
   AcademySnapshot,
@@ -13,6 +14,7 @@ interface StoryOptions {
   offline?: boolean;
   width?: number;
   questions?: Question[];
+  knowledge?: ConceptKnowledge[];
 }
 function short(value: string, max = 2400) {
   const text = safeText(value, max + 1).trim();
@@ -22,6 +24,7 @@ function short(value: string, max = 2400) {
 export function renderStory(snapshot: StoryContext, options: StoryOptions = {}): string {
   const width = Math.max(12, options.width ?? 72);
   const lessons = snapshot.lessons.filter((l) => l.captureId === snapshot.captureId);
+  const pending = pendingConcept(lessons, options.questions ?? [], options.knowledge);
   const language = conversationLanguage(
     snapshot.events,
     snapshot.language ?? lessons.at(-1)?.language,
@@ -61,21 +64,36 @@ export function renderStory(snapshot: StoryContext, options: StoryOptions = {}):
               ].includes(s.heading),
             )
     ).filter((s) => s.evidence.length && s.evidence.every((id) => ids.has(id)));
-    for (const section of sections) {
+    const check = citedConcept(lesson);
+    const response = (options.questions ?? []).find(
+      (q) => q.lessonId === lesson.id && q.conceptResponse?.key === check?.key && q.conceptResponse,
+    );
+    const waiting = pending?.id === lesson.id;
+    const split = waiting || !!response;
+    for (const section of split ? sections.slice(0, 1) : sections) {
       add(section);
+    }
+    if (check && response?.conceptResponse) {
+      blocks.push(
+        `## Quick question · ${short(check.concept, 120)}\n\n${short(check.question, 500)}\n\nYour response: ${short(response.conceptResponse.text ?? conceptChoices[response.conceptResponse.choice], 2000)}`,
+      );
+      for (const answer of response.answer) blocks.push(safeText(answer.body, 60000));
+      for (const section of sections.slice(1)) add(section);
     }
     if (sections.length) for (const id of lesson.evidenceIds) covered.add(id);
     const edges = lesson.diagram.filter(
       (edge) => edge.evidence.length && edge.evidence.every((id) => ids.has(id)),
     );
-    if (edges.length) {
+    if (edges.length && !waiting) {
       const key = JSON.stringify(edges.map(({ from, to, label }) => ({ from, to, label })));
       if (!seen.has(key)) {
         seen.add(key);
         blocks.push('Flow:\n\n' + renderDiagram(edges.slice(0, 3), width, false));
       }
     }
-    for (const q of (options.questions ?? []).filter((q) => q.lessonId === lesson.id)) {
+    for (const q of (options.questions ?? []).filter(
+      (q) => q.lessonId === lesson.id && !q.conceptResponse,
+    )) {
       blocks.push(
         `## Your question\n\n${short(q.question, 2000)}\n\n${q.answer.map((a) => safeText(a.body, 60000)).join('\n\n')}`,
       );
@@ -110,6 +128,9 @@ export function renderStory(snapshot: StoryContext, options: StoryOptions = {}):
       ? 'Offline mode: choose an explanation model in Settings for code-specific reasoning and explanations in any conversation language.'
       : '',
     complete ? 'Turn completed. Press B to follow a new task.' : '',
+    pending?.conceptCheck
+      ? `## Quick question · ${short(pending.conceptCheck.concept, 120)}\n\n${short(pending.conceptCheck.question, 500)}\n\n1 · Explain briefly\n2 · I know this\n3 · Skip for now\nEnter · Reply in your own words`
+      : '',
   ]
     .filter(Boolean)
     .join('\n\n');

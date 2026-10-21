@@ -54,7 +54,26 @@ export interface Usage {
   output: number;
   estimated: boolean;
 }
+export interface ConceptCheck {
+  key: string;
+  concept: string;
+  question: string;
+  brief: string;
+  connection: string;
+  evidence: string[];
+}
+export type ConceptChoice = 'explain' | 'familiar' | 'skip';
+export interface ConceptKnowledge {
+  key: string;
+  concept: string;
+  status: 'explained' | 'familiar';
+}
+export interface LearningContext {
+  knowledge: ConceptKnowledge[];
+  responses: Question[];
+}
 export interface Lesson {
+  conceptCheck?: ConceptCheck;
   language?: string;
   captureId?: string;
   id: string;
@@ -72,6 +91,7 @@ export interface Lesson {
   error?: string;
 }
 export interface Question {
+  conceptResponse?: { key: string; choice: ConceptChoice; text?: string };
   id: string;
   lessonId: string;
   question: string;

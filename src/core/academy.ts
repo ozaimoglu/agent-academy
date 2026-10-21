@@ -1,5 +1,13 @@
 import { EventEmitter } from 'node:events';
-import type { AcademyEvent, Lesson, Question, Session, Stage, Usage } from './types.js';
+import type {
+  AcademyEvent,
+  ConceptChoice,
+  Lesson,
+  Question,
+  Session,
+  Stage,
+  Usage,
+} from './types.js';
 import type { Config } from '../storage/config.js';
 import { LessonStore } from '../storage/store.js';
 import { CodexSessionAdapter, matchSessions, type CodexCheckpoint } from '../adapters/codex.js';
@@ -12,6 +20,7 @@ import { hash, safeText } from './privacy.js';
 import { generateReport, exportReport } from './report.js';
 import { associatedPane, createHerdrCall } from '../integration/herdr.js';
 import { conversationLanguage } from './language.js';
+import { citedConcept, conceptChoice, pendingConcept } from './concepts.js';
 
 export interface AcademySnapshot {
   language?: string;
@@ -432,6 +441,12 @@ export class Academy extends EventEmitter {
           this.snapshot.lessons.filter((l) => !this.window || l.captureId === this.window.id),
           signal,
           this.snapshot.language,
+          {
+            knowledge: this.conceptKnowledge(),
+            responses: this.snapshot.lessons
+              .filter((l) => l.captureId === this.snapshot.captureId)
+              .flatMap((l) => this.questions(l)),
+          },
         );
         if (generation !== this.generation || this.stopped) return;
         lesson.id = hash(this.store.key(s) + '|' + (this.window?.id ?? '') + '|' + lesson.id);
@@ -467,11 +482,83 @@ export class Academy extends EventEmitter {
   questions(l: Lesson) {
     return this.store.questions(l);
   }
+  conceptKnowledge() {
+    return this.store.conceptKnowledge(this.root);
+  }
+  pendingConceptCheck() {
+    const lessons = this.snapshot.lessons.filter((l) => l.captureId === this.snapshot.captureId);
+    return pendingConcept(
+      lessons,
+      lessons.flatMap((l) => this.questions(l)),
+      this.conceptKnowledge(),
+    );
+  }
+  private assertCurrentLesson(l: Lesson) {
+    if (
+      !this.snapshot.selected ||
+      l.sessionId !== this.snapshot.selected.id ||
+      l.captureId !== this.snapshot.captureId ||
+      !this.snapshot.lessons.some((saved) => saved.id === l.id)
+    )
+      throw new Error('This lesson is not part of the current session and capture.');
+  }
+  private rememberResponse(l: Lesson, q: Question) {
+    this.store.question(q);
+    const response = q.conceptResponse;
+    if (response && response.choice !== 'skip')
+      this.store.rememberConcept(this.root, {
+        key: response.key,
+        concept: l.conceptCheck!.concept,
+        status: response.choice === 'familiar' ? 'familiar' : 'explained',
+      });
+  }
+  async respondToConcept(l: Lesson, choice: ConceptChoice, text?: string): Promise<Question> {
+    this.assertCurrentLesson(l);
+    if (this.questionBusy) throw new Error('Wait for the current answer to finish.');
+    const check = citedConcept(l);
+    if (!check || this.pendingConceptCheck()?.id !== l.id)
+      throw new Error('This concept check has already been answered or is no longer active.');
+    if (!['explain', 'familiar', 'skip'].includes(choice))
+      throw new Error('Invalid concept response.');
+    const q: Question = {
+      id: hash(l.id + '|concept|' + check.key),
+      lessonId: l.id,
+      question: check.question,
+      conceptResponse: { key: check.key, choice, ...(text ? { text: safeText(text, 2000) } : {}) },
+      created: new Date().toISOString(),
+      answer:
+        choice === 'explain'
+          ? [
+              {
+                heading: 'Brief explanation',
+                body: check.brief,
+                evidence: check.evidence,
+                confidence: 'Unknown',
+              },
+              {
+                heading: 'Back to the code',
+                body: check.connection,
+                evidence: check.evidence,
+                confidence: 'Strongly supported',
+              },
+            ]
+          : [],
+    };
+    this.rememberResponse(l, q);
+    this.emitChange();
+    // Revealing the already-generated short explanation makes no new model request.
+    if (this.snapshot.report) await this.export();
+    return q;
+  }
   evidence(l: Lesson) {
     const s = this.snapshot.selected;
     return s ? this.store.evidence(s, l.evidenceIds) : [];
   }
   async ask(l: Lesson, text: string): Promise<Question> {
+    this.assertCurrentLesson(l);
+    const check = this.pendingConceptCheck()?.id === l.id ? citedConcept(l) : undefined;
+    const choice = check ? conceptChoice(text) : undefined;
+    if (choice) return this.respondToConcept(l, choice, text);
     if (this.questionBusy || this.snapshot.busy)
       throw new Error('Try again once the current explanation is ready.');
     if (!text.trim()) throw new Error('Enter a question.');
@@ -490,7 +577,10 @@ export class Academy extends EventEmitter {
       );
       if (generation !== this.generation || this.stopped)
         throw new Error('The session changed; the answer was not saved.');
-      this.store.question(q);
+      if (check)
+        q.conceptResponse = { key: check.key, choice: 'explain', text: safeText(text, 2000) };
+      this.rememberResponse(l, q);
+      if (this.snapshot.report) await this.export();
       return q;
     } finally {
       this.questionBusy = false;

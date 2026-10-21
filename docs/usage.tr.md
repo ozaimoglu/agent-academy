@@ -73,18 +73,31 @@ Yeni açıklamalar alta eklenir. Yukarı kaydırıp önceki bir bölümü okurke
 
 Çevrimdışı mod gözlenen adımları ve gerçek kod farklarını özetler. Koda özel neden-sonuç açıklamaları için bir açıklama modeli seçilir. B ile başlatıldığında devam eden görevin hedefi hemen bağlama alınır. Yalnızca Git değişikliği gözlense bile otomatik analiz açıksa açıklama hazırlanır; değişmeyen kod için tekrar tekrar istek yapılmaz.
 
+## Kavramları birlikte netleştirme
+
+Açıklama modeli, kodu anlamak için önemli bir kavramda kısa bir soru sorabilir: “Transaction kavramını biliyor musun? Bilmiyorsan kısaca anlatayım; sonra bu koda dönelim.” Angular’daki bir lifecycle hook veya farklı bir teknolojiye ait kavram da seçilebilir; soru gözlenen gerçek koda dayanır.
+
+- **1 · Explain briefly**: Kısa tanım → mevcut koddaki bağlantısı → kod anlatımına devam.
+- **2 · I know this**: Temel tanımı geç; bu projede kavramı bildiğini hatırla.
+- **3 · Skip for now**: Şimdilik geç; kavramı bildiğin varsayılmaz ve mevcut öğrenme aralığında tekrar sorulmaz.
+- **Enter**: “bilmiyorum” gibi kendi cümlenle yanıtla veya daha özel bir soru yaz.
+
+Soru ve kısa açıklama konuşma dilindedir; tuş etiketleri İngilizce kalır. Aynı anda tek soru bekler ve her terimde soru sorulmaz. Yanıt beklenirken gözlem ve Codex çalışması sürer; görev tamamlanması da bekletilmez. Bildiğin veya kısaca açıklanan kavramlar proje bazında yerel olarak saklanır; kısa açıklama almış olman konuyu tamamen öğrendiğin anlamına gelmez. Başka projelerin kavram geçmişi birbirine karışmaz.
+
+Kısa tanım dersle birlikte hazırlandığı için üç hızlı yanıt ek model isteği oluşturmaz. Serbest bir takip sorusu normal model isteği kullanabilir. Çevrimdışı mod, model olmadan kavram tanımı veya yeni kavram sorusu üretmez. Yanıt ve açıklama ilgili dersle birlikte rapora kaydedilir.
+
 ## Terminal kullanımı
 
-| Tuş | İşlem |
-| --- | --- |
-| B | Seçili görev için öğrenmeyi başlat |
-| D | Gözlemi durdur, devam eden açıklamayı iptal et |
-| Q | Academy panelini kapat |
-| ↑/↓, Space, PgUp/PgDn | Aynı sohbet içinde kaydır |
-| Home / End | Başlangıca / en yeni açıklamaya dön |
-| Enter | Sorunu yaz; tekrar Enter ile gönder, Esc ile vazgeç |
-| S | Öğrenme ve model ayarlarını aç |
-| C | Yalnızca oturum belirsizse izlenecek Codex oturumunu seç |
+| Tuş                   | İşlem                                                    |
+| --------------------- | -------------------------------------------------------- |
+| B                     | Seçili görev için öğrenmeyi başlat                       |
+| D                     | Gözlemi durdur, devam eden açıklamayı iptal et           |
+| Q                     | Academy panelini kapat                                   |
+| ↑/↓, Space, PgUp/PgDn | Aynı sohbet içinde kaydır                                |
+| Home / End            | Başlangıca / en yeni açıklamaya dön                      |
+| Enter                 | Sorunu yaz; tekrar Enter ile gönder, Esc ile vazgeç      |
+| S                     | Öğrenme ve model ayarlarını aç                           |
+| C                     | Yalnızca oturum belirsizse izlenecek Codex oturumunu seç |
 
 Ayarlar ekranında `1`–`4` ilgili tercihe gider. Çoklu seçimde Space kullanın. AI ekranında Space sağlayıcıyı seçer, A gelişmiş ayarları açar. Alan üzerinde Enter düzenler. Panel genişliği bir sonraki açılışta uygulanır. Anlatım en az 24 sütun × 12 satır ister; dar panellerde metin ve şemalar genişliğe uyarlanır.
 

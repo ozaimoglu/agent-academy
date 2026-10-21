@@ -9,6 +9,8 @@ import { OnboardingWizard } from './onboarding.js';
 import { theme as c } from './theme.js';
 import { safeText } from '../core/privacy.js';
 import { renderStory } from './story.js';
+import type { ConceptChoice, Lesson } from '../core/types.js';
+import { pendingConcept } from '../core/concepts.js';
 
 function useSize() {
   const stdout = useStdout().stdout as NodeJS.WriteStream;
@@ -45,6 +47,7 @@ export function AcademyTUI({
   const [sessionIndex, setSessionIndex] = useState(0);
   const [question, setQuestion] = useState('');
   const [typing, setTyping] = useState(false);
+  const [questionTarget, setQuestionTarget] = useState<Lesson>();
   const [notice, setNotice] = useState('');
   const [answerVersion, setAnswerVersion] = useState(0);
   const { exit } = useApp();
@@ -54,6 +57,8 @@ export function AcademyTUI({
   const lessons = snapshot.lessons.filter((l) => l.captureId === snapshot.captureId);
   const lesson = lessons.at(-1);
   const questions = lessons.flatMap((l) => academy.questions(l));
+  const knowledge = academy.conceptKnowledge();
+  const conceptLesson = pendingConcept(lessons, questions, knowledge);
   const needsSession = !snapshot.selected && snapshot.sessions.length > 1;
   const sessionText = [
     'Which Codex session should we follow?',
@@ -71,6 +76,7 @@ export function AcademyTUI({
         offline: config.provider.kind === 'offline',
         width: innerWidth,
         questions,
+        knowledge,
       });
   const lines = wrapAnsi(content, innerWidth, { hard: true, trim: false }).split('\n');
   const bottom = Math.max(0, lines.length - visibleRows);
@@ -86,13 +92,24 @@ export function AcademyTUI({
   }, [academy, initialConfig.onboarded]);
 
   const ask = async (text: string) => {
-    if (!lesson || !text.trim()) return;
+    const target = questionTarget ?? lesson;
+    if (!target || !text.trim()) return;
     setTyping(false);
     setNotice('Preparing your answer…');
     setFollowing(true);
     try {
-      await academy.ask(lesson, text);
+      await academy.ask(target, text);
       setAnswerVersion((v) => v + 1);
+      setNotice('');
+    } catch (error) {
+      setNotice(safeText((error as Error).message, 300));
+    }
+  };
+  const respond = async (target: Lesson, choice: ConceptChoice) => {
+    try {
+      await academy.respondToConcept(target, choice);
+      setAnswerVersion((v) => v + 1);
+      setFollowing(true);
       setNotice('');
     } catch (error) {
       setNotice(safeText((error as Error).message, 300));
@@ -154,6 +171,13 @@ export function AcademyTUI({
       setChoosingSession(true);
       return;
     }
+    if (conceptLesson && ['1', '2', '3'].includes(input)) {
+      void respond(
+        conceptLesson,
+        ({ '1': 'explain', '2': 'familiar', '3': 'skip' } as const)[input as '1' | '2' | '3'],
+      );
+      return;
+    }
     if (key.return) {
       if (snapshot.busy) setNotice('You can ask once the current explanation is ready.');
       else if (!lesson) {
@@ -169,6 +193,7 @@ export function AcademyTUI({
         }
       } else {
         setQuestion('');
+        setQuestionTarget(conceptLesson ?? lesson);
         setTyping(true);
         setNotice('');
       }
@@ -249,7 +274,11 @@ export function AcademyTUI({
       </Box>
       {typing && (
         <Box flexDirection="column">
-          <Text color={c.accent}>Type your question · Enter send · Esc cancel</Text>
+          <Text color={c.accent}>
+            {questionTarget?.conceptCheck && conceptLesson?.id === questionTarget.id
+              ? 'Type your reply · Enter send · Esc cancel'
+              : 'Type your question · Enter send · Esc cancel'}
+          </Text>
           <TextInput
             value={question}
             onChange={(v) => setQuestion(v.slice(0, 2000))}
@@ -270,7 +299,11 @@ export function AcademyTUI({
         {snapshot.learning === 'paused' ? '[B Start] · S settings · Q close' : '[D Stop] · Q close'}
       </Text>
       <Text color={c.muted} wrap="truncate-end">
-        ↑↓ scroll{lesson ? ' · Enter ask' : snapshot.events.length ? ' · Enter explain' : ''}
+        {conceptLesson ? (
+          '1 / 2 / 3 respond · Enter reply'
+        ) : (
+          <>↑↓ scroll{lesson ? ' · Enter ask' : snapshot.events.length ? ' · Enter explain' : ''}</>
+        )}
       </Text>
     </Box>
   );

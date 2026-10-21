@@ -1,7 +1,15 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, chmodSync } from 'node:fs';
 import path from 'node:path';
-import type { AcademyEvent, Checkpoint, Lesson, Question, Session, Usage } from '../core/types.js';
+import type {
+  AcademyEvent,
+  Checkpoint,
+  ConceptKnowledge,
+  Lesson,
+  Question,
+  Session,
+  Usage,
+} from '../core/types.js';
 import { hash } from '../core/privacy.js';
 
 export class LessonStore {
@@ -147,6 +155,13 @@ export class LessonStore {
       )
       .all(l.id, limit)
       .map((r) => this.json<Question>(r)!);
+  }
+  conceptKnowledge(project: string): ConceptKnowledge[] {
+    return JSON.parse(this.getMeta('concepts:' + hash(project)) ?? '[]');
+  }
+  rememberConcept(project: string, entry: ConceptKnowledge) {
+    const knowledge = this.conceptKnowledge(project).filter((k) => k.key !== entry.key);
+    this.setMeta('concepts:' + hash(project), JSON.stringify([...knowledge, entry].slice(-100)));
   }
   getMeta(key: string): string | undefined {
     return (

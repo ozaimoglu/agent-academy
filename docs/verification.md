@@ -2,6 +2,14 @@
 
 Date: 2026-10-21. Host: macOS. Target: Ubuntu 24.04.
 
+## Optional concept questions · 2026-10-22
+
+- A real Codex/ChatGPT teaching request with synthetic Spring code produced a Turkish transaction-familiarity question, a short definition and an evidence-cited connection to the observed self-call/separate-bean change. All eleven lesson sections and concept references passed normal validation. Recorded usage: 9,431 input / 1,864 output tokens. This checks one synthetic lesson, not broad educational quality; no actual project source was sent.
+
+- `npm run check`: **150 tests across 13 files**, lint, strict TypeScript and build passed. The real offline PTY smoke passed. Actual Ubuntu 24.04 arm64 container acceptance passed the same 150 tests, production-host installation and receipt verification, loopback HTTP and real PTY checks.
+- New coverage exercises cited Spring and Angular concept payloads, unsupported citations, sanitized prompts, one pending check, spacing between questions, project familiarity, introduction-before-code ordering, all three keyboard choices, natural replies, stable input targeting as new lessons arrive, duplicate/stale response rejection, persistence/project isolation, skip scope and continued observation/task completion while a question is unanswered.
+- Configured-provider tests verify the three quick responses make no additional model request. Custom questions follow the normal Q&A path and are retained with the concept response in the report.
+
 ## English interface and conversation language
 
 - `npm run check`: **130 tests across 12 files**, lint, strict TypeScript and build passed. The real PTY smoke passed on macOS. Actual Ubuntu 24.04 arm64 container acceptance passed all 130 tests, production-host installation, receipt verification, real loopback HTTP and PTY checks.

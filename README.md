@@ -50,6 +50,23 @@ New explanations continue here.
 
 New explanations continue below the previous ones. Scroll up to reread; Academy keeps your place until you return to the latest message with **End**. Press **Enter** to ask a follow-up question and read the answer in the same conversation. A Markdown debrief is saved locally when the task finishes.
 
+### A quick question when a concept matters
+
+A configured explanation model can pause at a useful concept and ask, in your conversation language: “Transaction kavramını biliyor musun? Bilmiyorsan kısaca anlatayım; sonra bu koda dönelim.” The topic comes from the observed code—an Angular lifecycle hook, a Spring transaction or another relevant concept.
+
+Reply in the same conversation:
+
+| Response                | What happens next                                                                              |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| **1 · Explain briefly** | Read a short definition, see its connection to the actual code, then continue the walkthrough. |
+| **2 · I know this**     | Continue with the code explanation and remember familiarity for this project.                  |
+| **3 · Skip for now**    | Continue without the short introduction; this does not mark the concept as familiar.           |
+| **Enter**               | Reply in your own words, such as “bilmiyorum”, or ask a more specific question.                |
+
+There is one pending question at a time, with progress explanations between new checks. Observation and the coding session continue while a question is unanswered. Familiar or previously introduced concepts are remembered locally per project; skipping suppresses the question for the current capture only. A short introduction is not treated as proof of mastery.
+
+The brief introduction is prepared with the lesson, so the three quick responses do not make an additional model request. A custom follow-up question can use the configured model. Offline observation does not invent concept definitions or familiarity checks.
+
 ### Interface and explanation language
 
 **The interface is English. The explanation follows your conversation language.** Menus, controls, settings, consent notices, diagnostics and report labels stay in English. Narration, generated code explanations, concepts and diagram labels follow the language you use with Codex. A follow-up answer follows a clear language in the question you ask.
@@ -117,17 +134,18 @@ Standby performs local session discovery only: no event ingestion, source/diff c
 
 ### Panel controls
 
-| Key                        | Action                                                             |
-| -------------------------- | ------------------------------------------------------------------ |
-| **B · Start**              | Follow the current task or the next observed turn.                 |
-| **D · Stop**               | Stop observation and cancel a pending explanation.                 |
-| **Q · Close**              | Close Academy; the coding session continues.                       |
-| **↑ / ↓**, **J / K**       | Scroll within the conversation.                                    |
-| **Space**, **PgUp / PgDn** | Scroll by a page.                                                  |
-| **Home / End**             | Go to the beginning / return to the latest explanation.            |
-| **Enter**                  | Ask about the latest lesson; Enter sends, Esc cancels.             |
-| **S · Settings**           | Pause learning and open preferences and provider settings.         |
-| **C · Choose session**     | Choose a Codex session when multiple sessions need disambiguation. |
+| Key                        | Action                                                                                  |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| **B · Start**              | Follow the current task or the next observed turn.                                      |
+| **D · Stop**               | Stop observation and cancel a pending explanation.                                      |
+| **Q · Close**              | Close Academy; the coding session continues.                                            |
+| **↑ / ↓**, **J / K**       | Scroll within the conversation.                                                         |
+| **Space**, **PgUp / PgDn** | Scroll by a page.                                                                       |
+| **Home / End**             | Go to the beginning / return to the latest explanation.                                 |
+| **Enter**                  | Ask about the latest lesson or reply to its concept question; Enter sends, Esc cancels. |
+| **S · Settings**           | Pause learning and open preferences and provider settings.                              |
+| **C · Choose session**     | Choose a Codex session when multiple sessions need disambiguation.                      |
+| **1 / 2 / 3**              | Respond when a concept question is visible.                                             |
 
 If observations exist but the first lesson has not been generated, **Enter** requests that lesson. Wait for any pending explanation to finish before asking a question. Opening Settings pauses learning; press **B** after saving to resume.
 
@@ -271,7 +289,7 @@ Remote source sharing requires explicit project-specific opt-in. HTTP explanatio
 
 **v0.1.0 MVP.** The application is implemented; validation scope is documented openly.
 
-- **130 automated tests** cover installation, onboarding, language detection and migration, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports and conversation controls. Language regressions cover Turkish, English, Spanish, French, German, Chinese and Japanese, including neutral follow-ups and English code/logs inside another-language conversation. Built-in English/Turkish narration starts from the first observed action; generated explanations, code and cited diagrams continue inline. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
+- **150 automated tests** cover installation, onboarding, language detection and migration, contextual concept questions and project familiarity, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports and conversation controls. Language regressions cover Turkish, English, Spanish, French, German, Chinese and Japanese, including neutral follow-ups and English code/logs inside another-language conversation. Built-in English/Turkish narration starts from the first observed action; generated explanations, code and cited diagrams continue inline. Installation tests exercise prerequisite failures, staged promotion, rollback, repeated installation, integrity checks, concurrent-install protection and runtime path binding through real subprocesses with isolated tool doubles.
 - Build, lint, deterministic demo, and actual project-matching **Codex 0.163.0** command/result parsing were verified during development.
 - Ubuntu 24.04 container validation covers clean installation, build/lint/tests, SQLite, offline reports, real loopback HTTP and real PTY keyboard navigation. The production image runs as a regular user with development dependencies removed. CI covers Ubuntu with Node 22.19 and 24.
 - Herdr pane open/close actions were exercised on the installed macOS server after fixing split targeting; the launcher is tested from another project directory. Native Ubuntu desktop/Herdr integration and real-model explanation quality still need target-machine validation.

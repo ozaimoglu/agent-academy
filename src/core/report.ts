@@ -4,6 +4,7 @@ import type { AcademyEvent, Lesson, Question, Session } from './types.js';
 import { confidenceLabels, stageLabels } from './types.js';
 import { hash, safeText } from './privacy.js';
 import { isTestCommand } from './milestones.js';
+import { citedConcept, conceptChoices } from './concepts.js';
 function fence(text: string) {
   const ticks = '`'.repeat(Math.max(3, ...[...text.matchAll(/`+/g)].map((m) => m[0].length + 1)));
   return `${ticks}text\n${text}\n${ticks}`;
@@ -34,6 +35,20 @@ export function generateReport(
       `### ${l.title} · ${stageLabels[l.stage]}`,
       `Provider: ${l.provider}${l.error ? ' · Model error: ' + l.error : ''}`,
     );
+    const check = citedConcept(l);
+    if (check) {
+      const response = questions.find(
+        (q) => q.lessonId === l.id && q.conceptResponse?.key === check.key,
+      );
+      lines.push(
+        `#### Concept check · ${check.concept}`,
+        check.question,
+        `Response: ${response?.conceptResponse ? conceptChoices[response.conceptResponse.choice] : 'Not answered'}`,
+      );
+      if (response?.conceptResponse?.text) lines.push(response.conceptResponse.text);
+      for (const answer of response?.answer ?? [])
+        lines.push(answer.body, `Evidence: ${answer.evidence.join(', ')}`);
+    }
     for (const sec of l.sections)
       lines.push(
         `#### ${sec.heading} · ${confidenceLabels[sec.confidence]}`,
@@ -57,7 +72,7 @@ export function generateReport(
       fence(e.text),
     );
   lines.push('## Questions and answers');
-  for (const q of questions)
+  for (const q of questions.filter((q) => !q.conceptResponse))
     lines.push(
       `### ${q.question}`,
       ...q.answer.map((a) => `${a.body}\n\nEvidence: ${a.evidence.join(', ') || 'none'}`),
