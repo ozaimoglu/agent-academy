@@ -115,7 +115,20 @@ Varsayılan otomatik analiz aralığı 60 saniye, seçilmiş kanıt bütçesi 40
 
 ### Mevcut Codex CLI
 
-Kurulu Codex 0.163.0’da `exec --ephemeral --sandbox read-only --ignore-user-config` doğrulandı. Ancak salt okunur sandbox, yalnızca seçilmiş proje bağlamını okuyabilen **araçsız bir öğretmen** garantisi vermiyor. Bu MVP ikinci Codex oturumu başlatmaz; seçenek arayüzde gerekçesiyle devre dışıdır. Açıklama için yerel veya uzak HTTP sağlayıcısı kullanın. Böylece öğretim oturumu kodlama oturumu olarak keşfedilemez. Gizli düşünce zinciri hiçbir sağlayıcı bağlamına alınmaz.
+**Mevcut Codex/ChatGPT kotanızı kullanabilirsiniz.** Ayrı API anahtarı gerekmez. Codex CLI 0.163.x ve macOS/Linux gerekir. `codex login status` çıktısı ChatGPT girişini göstermeli; API anahtarıyla giriş bu seçenek için kabul edilmez.
+
+1. Panelde **S → 4** açın.
+2. **Codex kotası / ChatGPT girişi** üzerine gidip **Space** ile seçin.
+3. **Enter** ile ilerleyin; proje ve veri paylaşımı bilgisini okuyup **O** ile onaylayın.
+4. Modeli boş bırakabilirsiniz: Codex’in yerleşik varsayılanı kullanılır. **A** ile model, analiz sıklığı, bağlam bütçesi, zaman aşımı ve otomatik analiz değiştirilebilir. Giriş deposu varsayılan `auto`; mevcut girişinizi bulamazsa Codex’in kullandığı `file` veya `keyring` değerini seçin. Kontrol ve model isteği aynı depoyu kullanır; Academy kimlik bilgilerini taşımaz.
+
+Öğretici istekleri **aynı hesabın kullanım limitinden düşer**; ücretsiz ek kota değildir. Seçilmiş kod parçaları ve kanıtlar Codex üzerinden OpenAI’a gönderildiği için her proje için açık izin gerekir. Academy token sayacı öğretici kullanımını gösterir; kalan kota yüzdesi değildir. Kalan limiti Codex’in `/status` ekranından kontrol edin. Kota hatasında otomatik tekrar veya ücretli API’ye geçiş yapılmaz.
+
+Öğretici, kod yazan oturumdan bağımsız, geçici bir `codex exec --ephemeral` isteğidir. Kodlama oturumu devam ettirilmez veya fork edilmez; ona mesaj gönderilmez. Öğreticinin cwd’si boş geçici bir dizindir. Kullanıcı config/rules, AGENTS, host skill keşfi, shell, MCP, plugin, tarayıcı, bilgisayar kontrolü ve alt ajan yetenekleri kapalıdır. Ayrı izin profili yalnızca asgari runtime ve geçici dizine okuma izni verir; yazma ve komut ağına izin vermez. Beklenmeyen araç olayı açıklamayı durdurur. Geçici oturum kaydı üretilmez; `agent-academy` thread kaynağı ayrıca gözlem adaptörü tarafından dışlanır. Academy giriş tokenını okumaz/kopyalamaz ve global Codex ayarlarını değiştirmez.
+
+Codex sağlayıcısında HTTP’ye ait çıktı token sınırı uygulanmaz; CLI bu sınırı desteklenen bir ayar olarak sunmuyor. Bağlam ve analiz sıklığı sınırlıdır; varsayılan zaman aşımı 240 saniyedir. Farklı CLI minor sürümü desteklenene kadar açık hata verir.
+
+Gerçek giriş/model bağlantısını yalnızca sentetik veriyle sınamak için: `npm run smoke:codex`. Bu komut kota tüketir. Bu geliştirme sandbox’ı Codex’in iç sunucusunu başlatmayı engellediği için canlı model testi burada tamamlanamadı; normal terminalinizde çalıştırın.
 
 ## Gözlem ve kanıt modeli
 
@@ -167,7 +180,7 @@ npm start -- --help
 
 Testler onboarding klavye akışını, ayar kalıcılığını, çoklu oturum/proje ayrımını, kısmi UTF-8 JSONL’yi, tekrarları, dosya değişimini, restart checkpoint’lerini, gerçek Git diff’ini, milestone sınıflandırmasını, kaynak sınırlarını, maskelemeyi, sağlayıcı hatalarını/iptalini, kanıt atıflarını, sıklık kontrolünü, Q&A bağlamını, raporu ve Herdr CLI sözleşmesini kapsar. Ağsız testler Fetch Request/Response sözleşmesini bellek içinde doğrular; `smoke:provider` gerçekten TCP bağlantısı açar.
 
-Bu geliştirme ortamında Node 22.19 / Herdr 0.9.3 / Codex 0.163.0 kullanıldı. Build, lint, otomatik testler ve gerçek bu-proje Codex kayıtlarının keşfi/komut ayrıştırması doğrulandı. **Sandbox gerçek Herdr socket erişimini ve loopback TCP dinlemeyi engelledi.** Global kayıt değiştirilmedi; gerçek Herdr sağ pane aç/kapa ve gerçek model kalitesi bu ortamda uçtan uca doğrulanamadı. [Ayrıntılı doğrulama notları](verification.md).
+Bu geliştirme ortamında Node 22.19 / Herdr 0.9.3 / Codex 0.163.0 kullanıldı. Build, lint, otomatik testler ve gerçek bu-proje Codex kayıtlarının keşfi/komut ayrıştırması doğrulandı. Kullanıcının yükleme isteği sonrasında gerçek Herdr sağ pane aç/kapa doğrulandı. Sandbox loopback TCP dinlemeyi ve Codex öğreticinin iç sunucu başlangıcını engelledi; canlı model kalitesi burada uçtan uca doğrulanamadı. [Ayrıntılı doğrulama notları](verification.md).
 
 ### Canlı Herdr kabul kontrolü
 
@@ -196,7 +209,7 @@ Kendi Ubuntu ortamınızda link işleminden sonra:
 
 **Rapor ve bellek sınırı**: Rapor son 3.000 olay + ilk görev, son 200 ders ve ders başına son 10 Q&A üzerinden oluşturulur; toplam Markdown 2 MiB ile sınırlıdır. UI son 100 dersi ve seçili dersin son 100 Q&A’sını açar; daha eski veriler SQLite’ta kalır. Uzun oturumlarda kapsam raporda belirtilir. SQLite/rapor, kaynak deponuzun dışında tutulmalıdır; kullanıcı `--state-dir` ile açıkça depo içini seçerse bu sınırı kendisi değiştirir.
 
-**Henüz kapsamda olmayanlar**: Claude Code/OpenCode somut adaptörleri (arayüz hazır), otomatik resmi teknik doküman getirme, tam semantik çağrı grafiği, bağımsız kod/test doğrulayıcısı, resim protokolleri, browser viewer, tam metin geçmiş arama ve ikinci Codex açıklama oturumu. Offline mod öğretici bir kanıt iskeleti sağlar; model olmadan ayrıntılı framework dersi uydurmaz.
+**Henüz kapsamda olmayanlar**: Claude Code/OpenCode somut adaptörleri (arayüz hazır), otomatik resmi teknik doküman getirme, tam semantik çağrı grafiği, bağımsız kod/test doğrulayıcısı, resim protokolleri, browser viewer ve tam metin geçmiş arama. Offline mod öğretici bir kanıt iskeleti sağlar; model olmadan ayrıntılı framework dersi uydurmaz.
 
 ## Kaynaklar ve mimari
 

@@ -426,6 +426,7 @@ export function AcademyTUI({
       <Text color={c.muted}>
         {snapshot.busy ? '◌ açıklanıyor' : stageLabels[snapshot.stage]} ·{' '}
         {total.toLocaleString('tr-TR')} token{estimated ? ' (tahmini)' : ''}
+        {config.provider.kind === 'codex' ? ' · Codex kotası' : ''}
       </Text>
       <Box marginTop={1} flexWrap="wrap">
         {tabs.map((t, i) => (

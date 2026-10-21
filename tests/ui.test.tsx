@@ -2,7 +2,7 @@ import React from 'react';
 import { afterEach, it, expect, vi } from 'vitest';
 import { render, cleanup } from 'ink-testing-library';
 import { OnboardingWizard } from '../src/ui/onboarding.js';
-import { defaultConfig } from '../src/storage/config.js';
+import { defaultConfig, consentKey } from '../src/storage/config.js';
 import { renderDiagram } from '../src/ui/diagrams.js';
 const pause = () => new Promise((r) => setTimeout(r, 40));
 afterEach(cleanup);
@@ -85,6 +85,46 @@ it('renders narrow diagrams from actual cited edges', () => {
   expect(result).toContain('OrderService');
   for (const line of result.split('\n').filter((l) => l.startsWith('│')))
     expect(line.length).toBeLessThanOrEqual(28);
+});
+it('selects existing Codex quota without an API key and obtains explicit project consent', async () => {
+  const config = defaultConfig();
+  const save = vi.fn(async () => {});
+  const ui = render(
+    <OnboardingWizard
+      initial={config}
+      settings
+      project="/project"
+      width={38}
+      height={24}
+      onSave={save}
+    />,
+  );
+  await pause();
+  ui.stdin.write('4');
+  await pause();
+  ui.stdin.write('\x1b[A'); // The last provider is Codex; wrap from the first option.
+  await pause();
+  ui.stdin.write(' ');
+  await pause();
+  expect(ui.lastFrame()).toContain('ortak Codex kotası');
+  ui.stdin.write('a');
+  await pause();
+  expect(ui.lastFrame()).not.toContain('API adresi');
+  expect(ui.lastFrame()).not.toContain('Anahtar ortam');
+  expect((ui.lastFrame() ?? '').split('\n').length).toBeLessThanOrEqual(24);
+  ui.stdin.write('\x1b');
+  await pause();
+  ui.stdin.write('\r');
+  await pause();
+  expect(ui.lastFrame()).toContain('Aynı Codex kotası');
+  expect((ui.lastFrame() ?? '').split('\n').length).toBeLessThanOrEqual(24);
+  expect(save).not.toHaveBeenCalled();
+  ui.stdin.write('o');
+  await pause();
+  const saved = save.mock.calls[0]?.[0];
+  expect(saved?.provider.kind).toBe('codex');
+  expect(saved?.provider.model).toBe('');
+  expect(saved?.provider.approvedProjects).toContain(consentKey(saved!.provider, '/project'));
 });
 it('keeps narrow onboarding readable inside a 38-column pane', async () => {
   const ui = render(

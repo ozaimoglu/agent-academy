@@ -2,6 +2,7 @@ import type { LLMProvider, ModelReply } from '../core/types.js';
 import type { ProviderConfig } from '../storage/config.js';
 import { validateProvider } from '../storage/config.js';
 import { safeText } from '../core/privacy.js';
+import { CodexCLIProvider } from './codex-cli.js';
 
 export class OpenAICompatibleProvider implements LLMProvider {
   readonly name: string;
@@ -80,8 +81,13 @@ export class OpenAICompatibleProvider implements LLMProvider {
     };
   }
 }
-export function createProvider(config: ProviderConfig, project?: string): LLMProvider | undefined {
+export function createProvider(
+  config: ProviderConfig,
+  project?: string,
+  env = process.env,
+): LLMProvider | undefined {
   if (config.kind === 'offline') return undefined;
   validateProvider(config, project);
-  return new OpenAICompatibleProvider(config);
+  if (config.kind === 'codex') return new CodexCLIProvider(config, env);
+  return new OpenAICompatibleProvider(config, env);
 }

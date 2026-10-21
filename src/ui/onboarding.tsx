@@ -2,7 +2,12 @@ import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import type { Config } from '../storage/config.js';
-import { consentKey, validateProvider } from '../storage/config.js';
+import {
+  consentKey,
+  validateProvider,
+  sharesExternally,
+  providerDestination,
+} from '../storage/config.js';
 import { theme as c } from './theme.js';
 
 const depths: [string, string, string][] = [
@@ -31,7 +36,11 @@ const providers: [string, string, string][] = [
   ['offline', 'Çevrimdışı gözlem', 'API anahtarı gerekmez · veri dışarı çıkmaz'],
   ['local', 'Ollama / yerel model', 'Loopback OpenAI uyumlu sunucu'],
   ['remote', 'Uzak OpenAI uyumlu API', 'Seçili kod ve kanıtlar dış servise gönderilir'],
-  ['codex', 'Mevcut Codex CLI', 'Bu MVP’de kullanılamıyor · araçsız izolasyon yok'],
+  [
+    'codex',
+    'Codex kotası / ChatGPT girişi',
+    'API anahtarı gerekmez · seçili kanıtlar OpenAI’a gider',
+  ],
 ];
 const titles = [
   'Ne kadar derin öğrenmek istiyorsun?',
@@ -39,7 +48,7 @@ const titles = [
   'En çok hangi konularda gelişmek istiyorsun?',
   'Açıklamaları hangi model hazırlasın?',
 ];
-const fields = [
+const allFields = [
   ['model', 'Model'],
   ['baseUrl', 'API adresi'],
   ['keyEnv', 'Anahtar ortam değişkeni'],
@@ -49,6 +58,8 @@ const fields = [
   ['contextChars', 'Bağlam karakter bütçesi'],
   ['panelWidth', 'Panel genişliği (%)'],
   ['autoAnalyze', 'Otomatik analiz (true/false)'],
+  ['codexTimeoutSeconds', 'Codex zaman bütçesi (sn)'],
+  ['codexCredentialStore', 'Codex giriş deposu (auto/file/keyring)'],
 ] as const;
 export function OnboardingWizard({
   initial,
@@ -82,6 +93,11 @@ export function OnboardingWizard({
   const [error, setError] = useState('');
   const [consent, setConsent] = useState(false);
   const [saving, setSaving] = useState(false);
+  const fields = allFields.filter(([key]) =>
+    config.provider.kind === 'codex'
+      ? !['baseUrl', 'keyEnv', 'maxOutputTokens', 'tokenParameter'].includes(key)
+      : !['codexTimeoutSeconds', 'codexCredentialStore'].includes(key),
+  );
   const options = step === 0 ? depths : step === 1 ? styles : step === 2 ? priorities : providers;
   const moveStep = (to: number) => {
     setStep(to);
@@ -99,7 +115,7 @@ export function OnboardingWizard({
   const save = async (approved = false) => {
     let next: Config = { ...config, onboarded: true };
     if (
-      next.provider.kind === 'remote' &&
+      sharesExternally(next.provider) &&
       (next.provider.consent !== consentKey(next.provider) ||
         (project &&
           !next.provider.approvedProjects.includes(consentKey(next.provider, project)))) &&
@@ -161,6 +177,7 @@ export function OnboardingWizard({
         provider: {
           ...config.provider,
           kind: id as Config['provider']['kind'],
+          model: config.provider.kind === id ? config.provider.model : '',
           consent: '',
           baseUrl:
             id === 'remote'
@@ -230,7 +247,12 @@ export function OnboardingWizard({
         ...config,
         provider: {
           ...config.provider,
-          [k]: ['minIntervalSeconds', 'maxOutputTokens', 'contextChars'].includes(k)
+          [k]: [
+            'minIntervalSeconds',
+            'maxOutputTokens',
+            'contextChars',
+            'codexTimeoutSeconds',
+          ].includes(k)
             ? Number(value)
             : k === 'autoAnalyze'
               ? value === 'true'
@@ -264,13 +286,25 @@ export function OnboardingWizard({
           <Text bold color={c.warning}>
             Dış servise veri gönderme izni
           </Text>
-          <Text>{config.provider.baseUrl}</Text>
-          <Text>Proje: {project ?? 'seçili bağlam'}</Text>
-          <Text>Model: {config.provider.model || '(belirlenmedi)'}</Text>
+          <Text wrap="truncate-middle">{providerDestination(config.provider)}</Text>
+          <Text wrap="truncate-middle">Proje: {project ?? 'seçili bağlam'}</Text>
           <Text>
-            Seçili görevin mesajları, komut sonuçları, kod farkları ve kaynak parçaları bu adrese
-            gönderilecek. Maskeleme tüm sırları yakalayamaz.
+            Model:{' '}
+            {config.provider.model ||
+              (config.provider.kind === 'codex' ? 'Codex CLI varsayılanı' : '(belirlenmedi)')}
           </Text>
+          <Text>
+            {compact
+              ? 'Seçili mesajlar, komut sonuçları, diff ve kod parçaları dış servise gider. Maskeleme tüm sırları yakalayamaz.'
+              : 'Seçili görevin mesajları, komut sonuçları, kod farkları ve kaynak parçaları bu adrese gönderilecek. Maskeleme tüm sırları yakalayamaz.'}
+          </Text>
+          {config.provider.kind === 'codex' && (
+            <Text>
+              {compact
+                ? 'Aynı Codex kotası kullanılır; API anahtarı yok.'
+                : 'Açıklamalar mevcut ChatGPT/Codex kullanım limitinden düşer. Ayrı API anahtarı kullanılmaz.'}
+            </Text>
+          )}
           <Text color={c.accent}>O: açıkça onayla ve kaydet · Esc: geri</Text>
         </Box>
       ) : advanced ? (
@@ -290,7 +324,9 @@ export function OnboardingWizard({
             </Box>
           ))}
           <Text color={c.muted}>
-            Anahtarın kendisini yazma; yalnızca ortam değişkeninin adını gir.
+            {config.provider.kind === 'codex'
+              ? 'Model boşsa CLI varsayılanı. Çıktı token sınırı CLI tarafından sunulmuyor.'
+              : 'Anahtarın kendisini yazma; yalnızca ortam değişkeninin adını gir.'}
           </Text>
         </Box>
       ) : (
@@ -320,10 +356,12 @@ export function OnboardingWizard({
           <Text color={c.muted}>
             {config.provider.kind === 'offline'
               ? 'Kanıt ve rapor hazır. Derin açıklama ve ASK için daha sonra model ekleyebilirsin.'
-              : `Model: ${config.provider.model || 'A ile model adını gir'} · ${config.provider.minIntervalSeconds} sn`}
+              : `Model: ${config.provider.model || (config.provider.kind === 'codex' ? 'CLI varsayılanı' : 'A ile model adını gir')} · ${config.provider.minIntervalSeconds} sn`}
           </Text>
           <Text color={c.muted}>
-            Yerel sunucuda da gerçekten yerel model kullan; bulut modelleri veri iletebilir.
+            {config.provider.kind === 'codex'
+              ? 'ChatGPT girişi · ortak Codex kotası · proje için açık izin gerekir.'
+              : 'Yerel sunucuda da gerçekten yerel model kullan; bulut modelleri veri iletebilir.'}
           </Text>
           <Text color={c.accent}>A: gelişmiş ayarlar</Text>
         </Box>

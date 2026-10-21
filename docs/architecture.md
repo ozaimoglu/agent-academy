@@ -6,7 +6,9 @@
 - Exact canonical cwd association, optional Herdr agent_session identity, manual selection on ambiguity. Never guess the latest session when several match. One selected session per observer, persistent byte checkpoints and deduplication, bounded batches.
 - SQLite WAL stores redacted normalized evidence, checkpoints, lessons, Q&A and usage. Configuration is separate atomic JSON under XDG config (or Herdr's plugin config directory). Raw transcripts and credentials are not stored. Credentials are environment-variable references.
 - Milestone state machine and a coalescing scheduler produce evidence-backed lessons. Root-cause statements from agent messages are attributed observations, not independently proven facts. Test success is an observed command exit, never proof of the whole implementation.
-- Offline mode provides honest structured evidence and a debrief; deep dynamic explanations require a configured model. OpenAI-compatible HTTP has no tools; loopback is the default. Remote endpoint consent is bound to endpoint/provider/model and the selected canonical project. Codex explanation integration is intentionally unavailable in this MVP: read-only sandboxing alone does not enforce a tool-free, selected-context-only teaching workflow. The UI explains this rather than running a second agent with broad read access. No teaching session can be mistaken for the observed agent because none is launched.
+- Offline mode provides honest structured evidence and a debrief; deep dynamic explanations require a configured model. OpenAI-compatible HTTP has no tools; loopback is the default. Remote and Codex consent is bound to provider/model/destination and the selected canonical project.
+- Codex teaching reuses the CLI's saved ChatGPT login through `codex exec`; Academy never reads, copies, or refreshes tokens itself. API-key authentication is rejected and API-key environment variables are omitted. An empty canonical temporary cwd, ephemeral sessions, an explicit `agent-academy` thread source, ignored user config/rules, disabled AGENTS loading and host skill discovery, disabled command/MCP/plugin/browser/computer/agent capabilities, and a named permissions profile allowing only minimal runtime/temporary-directory reads separate the teacher from the implementation agent. Command network access and all filesystem writes are denied. No resume/fork/send to the coding thread is used. Any observed tool item aborts the teaching request; reasoning is discarded. Unsupported CLI minors fail closed; initially 0.163.x on Linux/macOS is enabled. These are invocation-local arguments, never edits to the user's config. Administrator policy may reject a profile; Academy does not weaken it or fall back to a paid API.
+- Codex's JSONL output provides final messages and actual turn token counts. Each teaching request has bounded parsing, cancellation, a configurable 240-second timeout, and temporary-directory cleanup. No automatic retries occur on quota failure. The HTTP output-token cap does not apply to Codex because this CLI exposes no equivalent supported limit; the UI hides that field for this provider. Full real-model validation remains blocked by this development sandbox, documented in verification.md.
 - Diagrams derive from normalized timeline and cited model edges. Bounded source excerpts resolve realpaths within the selected project. No automatic repository writes. Markdown exports live in Academy state.
 
 Primary references:
@@ -19,6 +21,8 @@ Primary references:
 - https://github.com/openai/codex/blob/main/codex-rs/protocol/src/protocol.rs
 - https://developers.openai.com/codex/noninteractive/
 - https://developers.openai.com/codex/app-server/
+- https://developers.openai.com/codex/auth/
+- https://learn.chatgpt.com/docs/permissions
 - https://docs.ollama.com/api/openai-compatibility
 - https://github.com/vadimdemedes/ink
 

@@ -6,7 +6,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { access } from 'node:fs/promises';
 import { academyPaths, canonical, safeText } from './core/privacy.js';
-import { loadConfig, defaultConfig, consentKey } from './storage/config.js';
+import { loadConfig, defaultConfig, consentKey, sharesExternally } from './storage/config.js';
+import { checkCodex } from './providers/codex-cli.js';
 import { LessonStore } from './storage/store.js';
 import { Academy } from './core/academy.js';
 import { AcademyTUI } from './ui/app.js';
@@ -104,16 +105,21 @@ async function main() {
     } catch {
       checks.push('Codex oturum dizini: henüz yok / erişilemiyor');
     }
-    checks.push(
-      `Herdr bağlamı: ${process.env.HERDR_ENV === '1' ? 'var' : 'yok'}`,
-      'Codex açıklama sağlayıcısı: bu MVP’de devre dışı (araçsız izolasyon doğrulanmadı)',
-    );
+    checks.push(`Herdr bağlamı: ${process.env.HERDR_ENV === '1' ? 'var' : 'yok'}`);
+    try {
+      await checkCodex(process.env.ACADEMY_CODEX_BIN || 'codex');
+      checks.push(
+        'Codex açıklama sağlayıcısı: hazır · ChatGPT girişi / Codex kotası (model isteği yapılmadı)',
+      );
+    } catch (error) {
+      checks.push(`Codex açıklama sağlayıcısı: ${safeText((error as Error).message, 250)}`);
+    }
     console.log(checks.join('\n'));
     return;
   }
   const config = values.demo ? defaultConfig() : await loadConfig(paths.config);
   if (
-    config.provider.kind === 'remote' &&
+    sharesExternally(config.provider) &&
     !config.provider.approvedProjects.includes(consentKey(config.provider, root))
   )
     config.onboarded = false;

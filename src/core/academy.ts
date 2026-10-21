@@ -72,7 +72,7 @@ export class Academy extends EventEmitter {
   }
   private makeEngine() {
     try {
-      const provider = createProvider(this.config.provider, this.root);
+      const provider = createProvider(this.config.provider, this.root, this.env);
       return new TeachingEngine(
         this.config,
         provider

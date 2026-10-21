@@ -17,6 +17,8 @@ export const providerSchema = z.object({
   tokenParameter: z.enum(['max_tokens', 'max_completion_tokens']).default('max_completion_tokens'),
   maxOutputTokens: z.number().int().min(512).max(32768).default(8192),
   contextChars: z.number().int().min(8000).max(100000).default(40000),
+  codexTimeoutSeconds: z.number().int().min(30).max(900).default(240),
+  codexCredentialStore: z.enum(['auto', 'file', 'keyring']).default('auto'),
   autoAnalyze: z.boolean().default(true),
 });
 export const configSchema = z.object({
@@ -35,8 +37,13 @@ export const configSchema = z.object({
 export type Config = z.infer<typeof configSchema>;
 export type ProviderConfig = Config['provider'];
 export const defaultConfig = (): Config => configSchema.parse({});
+export const sharesExternally = (p: ProviderConfig) => p.kind === 'remote' || p.kind === 'codex';
+export const providerDestination = (p: ProviderConfig) =>
+  p.kind === 'codex' ? 'Codex CLI · OpenAI / ChatGPT hesabı' : p.baseUrl;
 export const consentKey = (p: ProviderConfig, project?: string) =>
-  hash(`${p.kind}|${p.baseUrl}|${p.model}${project ? '|' + project : ''}`);
+  hash(
+    `${p.kind}|${p.kind === 'codex' ? 'chatgpt' : p.baseUrl}|${p.model}${project ? '|' + project : ''}`,
+  );
 export function isLoopback(url: string): boolean {
   try {
     const u = new URL(url);
@@ -54,25 +61,23 @@ export function isLoopback(url: string): boolean {
 }
 export function validateProvider(p: ProviderConfig, project?: string) {
   if (p.kind === 'offline') return;
-  if (!p.model.trim()) throw new Error('Model adı gerekli.');
-  if (p.kind === 'codex')
-    throw new Error(
-      'Bu MVP, Codex CLI için doğrulanmış araçsız izolasyon sağlamıyor. Yerel veya OpenAI uyumlu HTTP sağlayıcısını seçin.',
-    );
-  const u = new URL(p.baseUrl);
-  if (u.username || u.password || u.search || u.hash)
-    throw new Error('URL içinde kimlik bilgisi veya sorgu kullanmayın.');
-  if (p.kind === 'local' && !isLoopback(p.baseUrl))
-    throw new Error(
-      'Yerel sağlayıcı loopback adresi kullanmalı. LAN için uzak sağlayıcıyı ve açık izni seçin.',
-    );
-  if (p.kind === 'remote' && u.protocol !== 'https:')
-    throw new Error('Uzak sağlayıcı HTTPS gerektirir.');
-  if (p.kind === 'remote' && project && !p.approvedProjects.includes(consentKey(p, project)))
+  if (p.kind !== 'codex') {
+    if (!p.model.trim()) throw new Error('Model adı gerekli.');
+    const u = new URL(p.baseUrl);
+    if (u.username || u.password || u.search || u.hash)
+      throw new Error('URL içinde kimlik bilgisi veya sorgu kullanmayın.');
+    if (p.kind === 'local' && !isLoopback(p.baseUrl))
+      throw new Error(
+        'Yerel sağlayıcı loopback adresi kullanmalı. LAN için uzak sağlayıcıyı ve açık izni seçin.',
+      );
+    if (p.kind === 'remote' && u.protocol !== 'https:')
+      throw new Error('Uzak sağlayıcı HTTPS gerektirir.');
+  }
+  if (sharesExternally(p) && project && !p.approvedProjects.includes(consentKey(p, project)))
     throw new Error(
       'Bu proje için uzak modele veri gönderme izni gerekli. Onboarding veya Ayarlar ekranını açın.',
     );
-  if (p.kind === 'remote' && p.consent !== consentKey(p))
+  if (sharesExternally(p) && p.consent !== consentKey(p))
     throw new Error('Bu sağlayıcı, model ve adres için açık veri paylaşım izni gerekli.');
 }
 export async function loadConfig(dir: string): Promise<Config> {

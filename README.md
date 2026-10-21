@@ -95,7 +95,7 @@ The onboarding runs **inside the product**:
 | **1 · Depth**      | Quick summary, balanced, or deep explanations                               | Deep                                               |
 | **2 · Style**      | Visuals, real code, fundamentals, senior engineering, interaction           | Visuals + code + fundamentals + senior engineering |
 | **3 · Priorities** | Debugging, Spring, architecture, concurrency, testing, security, TypeScript | Everything                                         |
-| **4 · Model**      | Offline, local, or remote explanation provider                              | Offline                                            |
+| **4 · Model**      | Offline, existing Codex quota, local, or remote explanation provider        | Offline                                            |
 
 Use arrow keys, Space, and Enter. Advanced provider settings are expandable. Press **S** later to revisit your preferences.
 
@@ -128,14 +128,16 @@ npm start -- --project /absolute/path/to/project
 
 ## Bring your explanation model
 
-| Provider                               | Behavior                                                                                                                                                        |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Offline**                            | Local observation, structured evidence, code views, timeline diagrams, and reports. No generated framework tutorial or model Q&A.                               |
-| **Ollama / local compatible endpoint** | Detailed lessons and Q&A through a loopback OpenAI-compatible HTTP endpoint. Use an actually local model; a server can still forward requests to a cloud model. |
-| **Remote compatible endpoint**         | Detailed lessons and Q&A over HTTPS, after explicit consent for the project, endpoint, and model.                                                               |
-| **Existing Codex CLI**                 | Unavailable in this MVP: a tool-free teacher restricted to selected context has not been verified. Academy does not start a second Codex session.               |
+| Provider                               | Behavior                                                                                                                                                                                                             |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Offline**                            | Local observation, structured evidence, code views, timeline diagrams, and reports. No generated framework tutorial or model Q&A.                                                                                    |
+| **Ollama / local compatible endpoint** | Detailed lessons and Q&A through a loopback OpenAI-compatible HTTP endpoint. Use an actually local model; a server can still forward requests to a cloud model.                                                      |
+| **Remote compatible endpoint**         | Detailed lessons and Q&A over HTTPS, after explicit consent for the project, endpoint, and model.                                                                                                                    |
+| **Existing Codex CLI / ChatGPT quota** | Reuses the CLI's saved ChatGPT login for independent, ephemeral teaching requests. No API key. Requires project-specific consent; explanations consume the same account allowance. Codex CLI 0.163.x on Linux/macOS. |
 
 No API key is assumed. Credentials are referenced by **environment variable name**, rather than saved in the settings. Available token usage is recorded; estimates are labeled. Automatic explanations are coalesced around engineering milestones, with a default minimum interval of 60 seconds.
+
+Already use Codex with ChatGPT? Open **S → 4**, select **Codex kotası / ChatGPT girişi** with Space, then Enter. Review the project-sharing notice and press **O** to approve. The model can stay blank to use Codex's built-in default, or be set under advanced settings. Your implementation session is never resumed, forked, or sent teaching prompts. Academy starts a separate ephemeral request in an empty temporary directory with restricted read permissions, command execution, MCP, plugins, browsing, and agent delegation disabled. It does not extract or copy login tokens. Remaining allowance is checked in Codex with `/status`; the token counter in Academy records teaching usage, not remaining quota.
 
 **Offline mode gets you started. A configured explanation model enables the deeper teaching experience.** [Provider setup →](docs/usage.tr.md#açıklama-modeli-yapılandırma)
 
@@ -185,7 +187,7 @@ Remote source sharing requires explicit project-specific opt-in. HTTP explanatio
 
 **v0.1.0 MVP.** The application is implemented; validation scope is documented openly.
 
-- **57 automated tests** cover onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation.
+- **71 automated tests** cover onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation, including a real subprocess boundary for the Codex provider.
 - Build, lint, deterministic demo, and actual project-matching **Codex 0.163.0** command/result parsing were verified during development.
 - Herdr pane open/close actions were exercised on the installed macOS server after fixing split targeting; the launcher is tested from another project directory. Direct socket inspection and real loopback HTTP tests were restricted by the development sandbox. End-to-end validation on Ubuntu and real-model explanation quality remain to be completed.
 - Codex rollout JSONL is an internal compatibility surface, so future format changes may require adapter updates. Claude Code/OpenCode adapters, semantic call graphs, browser rendering, and automatic documentation retrieval are outside this MVP.
@@ -203,6 +205,7 @@ npm run check
 
 ```bash
 npm run smoke:provider       # Real loopback HTTP smoke test; no model or API key needed
+npm run smoke:codex          # Real Codex/ChatGPT request; consumes quota; sends only synthetic data
 npm start -- --doctor       # Local diagnostics
 npm start -- --help         # CLI options
 ```

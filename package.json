@@ -18,7 +18,8 @@
     "test": "vitest run",
     "lint": "eslint src tests && tsc --noEmit -p tsconfig.json",
     "check": "npm run lint && npm test && npm run build",
-    "smoke:provider": "npm run build && node scripts/smoke-provider.mjs"
+    "smoke:provider": "npm run build && node scripts/smoke-provider.mjs",
+    "smoke:codex": "npm run build && node scripts/smoke-codex.mjs"
   },
   "dependencies": {
     "cli-highlight": "^2.1.11",

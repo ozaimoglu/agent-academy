@@ -80,6 +80,15 @@ describe('incremental Codex observation', () => {
     await rollout(sessions, root, 'one');
     await rollout(sessions, root, 'two');
     await rollout(sessions, root, 'child', '', { subagent: { parent_thread_id: 'one' } });
+    await writeFile(
+      path.join(sessions, 'teacher.jsonl'),
+      row('session_meta', {
+        id: 'teacher',
+        cwd: root,
+        source: 'exec',
+        thread_source: 'agent-academy',
+      }),
+    );
     const found = await new CodexSessionAdapter().discover(sessions);
     expect(found.map((s) => s.id).sort()).toEqual(['one', 'two']);
     expect(matchSessions(found, root).selected).toBeUndefined();
