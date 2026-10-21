@@ -55,6 +55,7 @@ export interface Usage {
   estimated: boolean;
 }
 export interface Lesson {
+  captureId?: string;
   id: string;
   sessionId: string;
   created: string;

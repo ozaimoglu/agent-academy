@@ -4,6 +4,8 @@ import { render, cleanup } from 'ink-testing-library';
 import { OnboardingWizard } from '../src/ui/onboarding.js';
 import { defaultConfig, consentKey } from '../src/storage/config.js';
 import { renderDiagram } from '../src/ui/diagrams.js';
+import { workspace, rollout, row } from './helpers.js';
+import path from 'node:path';
 const pause = () => new Promise((r) => setTimeout(r, 40));
 afterEach(cleanup);
 it('completes four onboarding screens with deep/default preferences in seconds', async () => {
@@ -17,7 +19,7 @@ it('completes four onboarding screens with deep/default preferences in seconds',
   expect(ui.lastFrame()).toContain('nasıl öğrenmeyi');
   ui.stdin.write('\r');
   await pause();
-  expect(ui.lastFrame()).toContain('hangi konularda');
+  expect(ui.lastFrame()).toContain('neye odaklanalım');
   ui.stdin.write('\r');
   await pause();
   expect(ui.lastFrame()).toContain('hangi model');
@@ -45,6 +47,26 @@ it('supports keyboard multi-select and back navigation without losing preference
   ui.stdin.write('\r');
   await pause();
   expect(ui.lastFrame()).toContain('□ Görsel');
+});
+it('collects generic learning priorities without asking for a language or framework', async () => {
+  const save = vi.fn(async () => {});
+  const ui = render(<OnboardingWizard initial={defaultConfig()} settings onSave={save} />);
+  await pause();
+  ui.stdin.write('3');
+  await pause();
+  expect(ui.lastFrame()).toContain('Temel kavramlar');
+  expect(ui.lastFrame()).toContain('Projedeki tüm konular');
+  for (const technology of ['Java', 'Spring', 'TypeScript', 'Frontend'])
+    expect(ui.lastFrame()).not.toContain(technology);
+  ui.stdin.write('\x1b[B');
+  await pause();
+  ui.stdin.write(' ');
+  await pause();
+  ui.stdin.write('4');
+  await pause();
+  ui.stdin.write('\r');
+  await pause();
+  expect(save.mock.calls[0]?.[0]?.priorities).toEqual(['fundamentals']);
 });
 it('requires an explicit remote data-sharing confirmation inside the product', async () => {
   const config = defaultConfig();
@@ -174,6 +196,10 @@ it('browses every live TUI view from the deterministic observation and teaching 
     <AcademyTUI academy={academy} configDir={demo.config} initialConfig={config} demo />,
   );
   try {
+    await pause();
+    expect(ui.lastFrame()).toContain('BEKLEMEDE');
+    expect(academy.snapshot.lessons).toHaveLength(0);
+    ui.stdin.write('b');
     await vi.waitFor(() => expect(academy.snapshot.lessons.length).toBe(1));
     await pause();
     expect(ui.lastFrame()).toContain('Tur tamamlandı');
@@ -196,5 +222,44 @@ it('browses every live TUI view from the deterministic observation and teaching 
     await academy.stop();
     store.close();
     await rm(demo.base, { recursive: true, force: true });
+  }
+});
+it('offers keyboard Start, Stop and panel Close without starting automatically', async () => {
+  const { AcademyTUI } = await import('../src/ui/app.js');
+  const { Academy } = await import('../src/core/academy.js');
+  const { LessonStore } = await import('../src/storage/store.js');
+  const { d, root, sessions } = await workspace();
+  await rollout(sessions, root, 'one', row('event_msg', { type: 'task_complete' }));
+  const config = defaultConfig();
+  config.onboarded = true;
+  const store = new LessonStore(path.join(d, 'state'));
+  const academy = new Academy(root, sessions, path.join(d, 'state'), config, store, {});
+  const close = vi.fn(async () => {});
+  const ui = render(
+    <AcademyTUI
+      academy={academy}
+      configDir={path.join(d, 'config')}
+      initialConfig={config}
+      onClosePanel={close}
+    />,
+  );
+  try {
+    await pause();
+    expect(ui.lastFrame()).toContain('[B Başlat]');
+    expect(academy.snapshot.lessons).toHaveLength(0);
+    ui.stdin.write('B');
+    await vi.waitFor(() => expect(academy.snapshot.learning).toBe('active'));
+    await pause();
+    expect(ui.lastFrame()).toContain('[D Durdur]');
+    ui.stdin.write('D');
+    await pause();
+    expect(academy.snapshot.learning).toBe('paused');
+    ui.stdin.write('Q');
+    await pause();
+    expect(close).toHaveBeenCalledTimes(1);
+  } finally {
+    ui.unmount();
+    await academy.stop();
+    store.close();
   }
 });

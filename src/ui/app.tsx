@@ -48,11 +48,13 @@ export function AcademyTUI({
   configDir,
   initialConfig,
   demo = false,
+  onClosePanel,
 }: {
   academy: Academy;
   configDir: string;
   initialConfig: Config;
   demo?: boolean;
+  onClosePanel?: () => Promise<void>;
 }) {
   const [snapshot, setSnapshot] = useState<AcademySnapshot>({ ...academy.snapshot });
   const [config, setConfig] = useState(initialConfig);
@@ -76,7 +78,7 @@ export function AcademyTUI({
   useEffect(() => {
     const changed = (s: AcademySnapshot) => setSnapshot({ ...s });
     academy.on('change', changed);
-    if (initialConfig.onboarded) academy.start();
+    if (initialConfig.onboarded) academy.watch();
     return () => {
       academy.off('change', changed);
     };
@@ -93,7 +95,7 @@ export function AcademyTUI({
   const selectedSection = lesson?.sections[sectionIndex % (lesson?.sections.length || 1)];
   const questions = lesson ? academy.questions(lesson) : [];
   const innerWidth = Math.max(12, width - 6);
-  const visibleRows = Math.max(3, height - (width < 60 ? 10 : 9) - (typing ? 3 : 0));
+  const visibleRows = Math.max(3, height - (width < 60 ? 11 : 10) - (typing ? 3 : 0));
   const switchTab = (n: number) => {
     setTab(n);
     setOffset(0);
@@ -125,6 +127,7 @@ export function AcademyTUI({
       if (key.escape) setTyping(false);
       return;
     }
+    input = input.toLowerCase();
     if (sessions) {
       if (key.escape) {
         setSessions(false);
@@ -145,10 +148,28 @@ export function AcademyTUI({
       return;
     }
     if (input === 'q') {
-      exit();
+      academy.pauseLearning();
+      if (onClosePanel)
+        void onClosePanel()
+          .then(exit)
+          .catch((error) => setNotice(safeText((error as Error).message, 300)));
+      else exit();
+      return;
+    }
+    if (input === 'b') {
+      setNotice('');
+      void academy
+        .beginLearning({ replay: demo })
+        .catch((error) => setNotice(safeText((error as Error).message, 300)));
+      return;
+    }
+    if (input === 'd') {
+      academy.pauseLearning();
+      setNotice('Durduruldu. Yeni gözlem ve otomatik model isteği yok.');
       return;
     }
     if (input === 's') {
+      academy.pauseLearning('Ayarlar açık · kaydettikten sonra B Başlat.');
       setWizard(true);
       return;
     }
@@ -157,8 +178,12 @@ export function AcademyTUI({
       return;
     }
     if (input === 'g') {
-      academy.requestLesson();
-      setNotice('Açıklama isteği sıraya alındı.');
+      try {
+        academy.requestLesson();
+        setNotice('Seçili kanıtlardan tek açıklama isteniyor.');
+      } catch (error) {
+        setNotice((error as Error).message);
+      }
       return;
     }
     if (input === 'e') {
@@ -274,7 +299,7 @@ export function AcademyTUI({
           setConfig(next);
           academy.setConfig(next);
           setWizard(false);
-          if (!was) academy.start();
+          if (!was) academy.watch();
         }}
       />
     );
@@ -301,11 +326,15 @@ export function AcademyTUI({
     ].join('\n');
   else if (tab === 0)
     content = [
-      `# ${stageLabels[snapshot.stage]}`,
+      `# ${snapshot.learning === 'paused' ? 'Öğrenme beklemede' : stageLabels[snapshot.stage]}`,
       snapshot.status,
       snapshot.selected
         ? `${snapshot.selected.cwd}\n${snapshot.selected.branch ?? 'dal bilinmiyor'} · ${snapshot.selected.id}`
         : 'Codex’i bu projede normal biçimde başlat. C ile oturum seç.',
+      '',
+      snapshot.learning === 'paused'
+        ? '▶ B Başlat: yalnızca seçtiğin görev için öğren.\n■ D Durdur: gözlemi ve model isteğini kes.\nTur bitince yeniden beklemeye geçer.\nGeçmişteki işler otomatik işlenmez.'
+        : '■ D Durdur · bu tur bitince otomatik bekleme',
       '',
       snapshot.busy
         ? '◌ Ders hazırlanıyor…'
@@ -321,7 +350,7 @@ export function AcademyTUI({
     ].join('\n');
   else if (tab === 1)
     content = !lesson
-      ? '# Ders bekleniyor\nAnlamlı bir aşamada açıklama oluşacak. G ile isteyebilirsin.'
+      ? '# Ders bekleniyor\nÖğrenmek istediğin görevde B Başlat. Anlamlı aşamalarda açıklama oluşur.'
       : outline
         ? [
             '# Ders bölümleri',
@@ -421,12 +450,23 @@ export function AcademyTUI({
         <Text bold color={c.accent}>
           ◈ {width < 45 ? 'ACADEMY' : 'AGENT ACADEMY'}
         </Text>
-        <Text color={demo ? c.warning : c.muted}>{demo ? 'DEMO · yerel' : '● YEREL'}</Text>
+        <Text color={snapshot.learning === 'paused' ? c.muted : c.accent}>
+          {demo ? 'DEMO · ' : ''}
+          {snapshot.learning === 'paused'
+            ? 'Ⅱ BEKLEMEDE'
+            : snapshot.learning === 'finishing'
+              ? '◌ RAPOR'
+              : '● ÖĞRENİYOR'}
+        </Text>
       </Box>
       <Text color={c.muted}>
         {snapshot.busy ? '◌ açıklanıyor' : stageLabels[snapshot.stage]} ·{' '}
         {total.toLocaleString('tr-TR')} token{estimated ? ' (tahmini)' : ''}
         {config.provider.kind === 'codex' ? ' · Codex kotası' : ''}
+      </Text>
+      <Text color={c.accent} wrap="truncate-end">
+        {snapshot.learning === 'paused' ? '[B Başlat]' : '[D Durdur]'} · S ayarlar ·{' '}
+        {onClosePanel ? 'Q paneli kapat' : 'Q çık'}
       </Text>
       <Box marginTop={1} flexWrap="wrap">
         {tabs.map((t, i) => (
@@ -467,8 +507,8 @@ export function AcademyTUI({
       </Text>
       <Text color={c.muted} wrap="truncate-end">
         {width < 55
-          ? 'S ayar · C oturum · Z geniş · Q çık'
-          : 'S ayarlar · C oturum · G açıkla · E dışa aktar · Z geniş · Q çık'}
+          ? 'C oturum · G açıkla · Z geniş'
+          : 'C oturum · G açıkla · E dışa aktar · Z geniş'}
       </Text>
     </Box>
   );

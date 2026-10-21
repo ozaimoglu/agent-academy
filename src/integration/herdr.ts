@@ -72,6 +72,24 @@ async function owns(call: HerdrCall, id: string, entry: string): Promise<boolean
       p.argv?.some((a: string) => path.resolve(a) === entry) && p.argv?.includes('--pane'),
   );
 }
+/** Closing from inside the panel leaves a harmless stale record for the next open to prune. */
+export async function closeAcademyPane(
+  env: NodeJS.ProcessEnv = process.env,
+  call: HerdrCall = createHerdrCall(env),
+) {
+  if (env.HERDR_ENV !== '1' || !env.HERDR_PANE_ID || !env.HERDR_WORKSPACE_ID)
+    throw new Error('Academy pane bağlamı gerekli.');
+  const pane = (await call(['pane', 'get', env.HERDR_PANE_ID])).pane as HerdrPane | undefined;
+  const entry = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../cli.js');
+  if (
+    !pane ||
+    pane.pane_id !== env.HERDR_PANE_ID ||
+    pane.workspace_id !== env.HERDR_WORKSPACE_ID ||
+    !(await owns(call, pane.pane_id, entry))
+  )
+    throw new Error('Bu pane Academy olarak doğrulanamadı; kapatılmadı.');
+  await call(['plugin', 'pane', 'close', pane.pane_id]);
+}
 export async function pluginAction(
   action: string,
   env: NodeJS.ProcessEnv = process.env,

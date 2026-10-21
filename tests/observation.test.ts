@@ -199,6 +199,36 @@ it('supports actual Codex 0.163 structured item_completed records without readin
     }),
   ).toEqual([]);
 });
+it('starts live capture at complete EOF, retains only the unfinished task, and preserves a partial UTF-8 row', async () => {
+  const { root, sessions } = await workspace();
+  const file = await rollout(
+    sessions,
+    root,
+    'one',
+    row('event_msg', { type: 'user_message', message: 'old task' }) +
+      row('event_msg', { type: 'task_complete' }) +
+      row('event_msg', { type: 'user_message', message: 'current task' }),
+  );
+  const adapter = new CodexSessionAdapter();
+  const selected = (await adapter.discover(sessions))[0]!;
+  const bytes = Buffer.from(row('event_msg', { type: 'agent_message', message: 'Yeni gözlem 🔎' }));
+  await appendFile(file, bytes.subarray(0, bytes.length - 4));
+  const tail = await adapter.tail(selected);
+  expect(tail.task?.text).toBe('current task');
+  expect((await adapter.read(selected, tail.checkpoint)).events).toHaveLength(0);
+  await appendFile(file, bytes.subarray(bytes.length - 4));
+  const next = await adapter.read(selected, tail.checkpoint);
+  expect(next.events.map((e) => e.text)).toEqual(['Yeni gözlem 🔎']);
+});
+it('does not seed a completed historical task and verifies metadata before tailing a replaced file', async () => {
+  const { root, sessions } = await workspace();
+  const file = await rollout(sessions, root, 'one', row('event_msg', { type: 'task_complete' }));
+  const adapter = new CodexSessionAdapter();
+  const selected = (await adapter.discover(sessions))[0]!;
+  expect((await adapter.tail(selected)).task).toBeUndefined();
+  await writeFile(file, row('session_meta', { id: 'replacement', cwd: root }));
+  await expect(adapter.tail(selected)).rejects.toThrow('kimliği');
+});
 it('rediscovers changed metadata when a rollout filename is replaced', async () => {
   const { root, sessions } = await workspace();
   const file = await rollout(sessions, root, 'old');

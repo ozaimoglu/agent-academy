@@ -7,6 +7,7 @@ import {
   validateProvider,
   sharesExternally,
   providerDestination,
+  learningPriorities,
 } from '../storage/config.js';
 import { theme as c } from './theme.js';
 
@@ -22,16 +23,7 @@ const styles: [string, string, string][] = [
   ['senior', 'Senior mühendis yaklaşımı', 'Mimari, ödünleşimler ve üretim riskleri'],
   ['interactive', 'Etkileşimli', 'Takip soruları ve isteğe bağlı bilgi kontrolü'],
 ];
-const priorities: [string, string][] = [
-  ['debugging', 'Debugging & Root Cause Analysis'],
-  ['spring', 'Java / Spring Internals'],
-  ['architecture', 'Architecture & Design Patterns'],
-  ['performance', 'Performance & Concurrency'],
-  ['testing', 'Testing & Quality'],
-  ['security', 'Security'],
-  ['frontend', 'Frontend / TypeScript'],
-  ['everything', 'Everything'],
-];
+const priorities = learningPriorities;
 const providers: [string, string, string][] = [
   ['offline', 'Çevrimdışı gözlem', 'API anahtarı gerekmez · veri dışarı çıkmaz'],
   ['local', 'Ollama / yerel model', 'Loopback OpenAI uyumlu sunucu'],
@@ -45,7 +37,7 @@ const providers: [string, string, string][] = [
 const titles = [
   'Ne kadar derin öğrenmek istiyorsun?',
   'Konuları nasıl öğrenmeyi tercih edersin?',
-  'En çok hangi konularda gelişmek istiyorsun?',
+  'Öğrenirken neye odaklanalım?',
   'Açıklamaları hangi model hazırlasın?',
 ];
 const allFields = [
@@ -203,6 +195,7 @@ export function OnboardingWizard({
       if (key.escape) setEditing(false);
       return;
     }
+    input = input.toLowerCase();
     if (settings && /^[1-4]$/.test(input)) {
       moveStep(Number(input) - 1);
       return;
@@ -373,10 +366,13 @@ export function OnboardingWizard({
             ? 'Kaydediliyor…'
             : advanced
               ? 'Alanlar yerel ayar dosyasına kaydedilir.'
-              : '↑↓ gezin · Space seç · Enter ' + (step === 3 ? 'başla' : 'devam') + ' · Esc geri'}
+              : '↑↓ gezin · Space seç · Enter ' + (step === 3 ? 'kaydet' : 'devam') + ' · Esc geri'}
           {settings ? ' · 1–4 doğrudan düzenle' : ''}
         </Text>
       </Box>
+      {step === 3 && !consent && !advanced && (
+        <Text color={c.muted}>Panel beklemede açılır. B başlat · D durdur.</Text>
+      )}
     </Box>
   );
 }

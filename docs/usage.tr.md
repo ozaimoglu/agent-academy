@@ -25,7 +25,13 @@ Ardından Herdr içindeki **Codex’in bulunduğu pane’den** açın:
 herdr plugin action invoke local.agent-academy.open
 ```
 
-Sağda varsayılan %38 genişliğinde kalıcı bir terminal pane’i açılır. Codex normal biçimde çalışmaya devam eder. İlk açılışta dört kısa ekran gelir: derinlik, öğretim tarzı, öğrenme öncelikleri ve açıklama sağlayıcısı. Varsayılanlar: **Derinlemesine**, görsel + kod + temeller + senior mühendis yaklaşımı, Everything ve çevrimdışı sağlayıcı.
+Sağda varsayılan %38 genişliğinde kalıcı bir terminal pane’i açılır. Codex normal biçimde çalışmaya devam eder. İlk açılışta dört kısa ekran gelir: derinlik, öğretim tarzı, genel öğrenme odağı ve açıklama sağlayıcısı. Varsayılanlar: **Derinlemesine**, görsel + kod + temeller + senior mühendis yaklaşımı, projedeki tüm konular ve çevrimdışı sağlayıcı. Java/Spring/TypeScript gibi teknoloji seçimi sorulmaz; ilgili teknoloji gerçek proje kanıtlarından belirlenir. Eski Spring tercihi temel kavramlara, frontend tercihi kod okumaya taşınır; sağlayıcı ayarları korunur.
+
+**Panel açılınca veya onboarding kaydedilince otomatik öğrenme başlamaz.** Sağdaki Academy pane’ine odaklanıp **B Başlat** ile seçtiğiniz görev için öğrenmeyi açın. **D Durdur**, yeni olay/kaynak/Git toplamayı durdurur ve devam eden model isteğini iptal eder. Codex turu bitince son rapor hazırlanır, sonra Academy yeniden bekler. Yeni bir görev için tekrar B gerekir. Tamamlanma işareti olmadan farklı bir kullanıcı görevi görülürse de beklemeye geçer.
+
+Beklemede yalnızca yerel oturum keşfi yapılır; otomatik model isteği veya kota tüketimi yoktur. Durdurulmuş aralıktaki tamamlanmış işler sonraki Başlat’ta işlenmez. Devam eden görevin son görev mesajı bağlam olarak alınabilir; önceki inceleme olayları geriye dönük toplanmaz. Her öğrenme aralığının raporu ayrı tutulur. Önceki dersleri okumak ücretsizdir; **G** veya **ASK** ile özellikle gönderdiğiniz istekler model kullanabilir. İptal, sağlayıcının zaten işlediği tokenları geri almaz.
+
+Panelde **Q**, yalnızca kimliği doğrulanan Academy pane’ini kapatır. Codex pane’i açık kalır. Aynı işlemleri Herdr eylemleriyle yapabilirsiniz:
 
 ```bash
 herdr plugin action invoke local.agent-academy.toggle
@@ -41,6 +47,8 @@ npm run demo
 ```
 
 Demo gerçek JSONL adaptörünü, ders motorunu, kaynak kanıtlarını ve rapor hattını çalıştırır. İzole geçici bir proje ve veritabanı kullanır; dış model çağırmaz. Spring transaction senaryosu **kaydedilmiş test fixture’ıdır**. Java testleri demo sırasında çalıştırılmaz; örnek Java dosyaları bağımsız derlenebilir bir Spring projesi değildir.
+
+Onboarding’den sonra **B** ile örnek oturumu oynatın. Yalnızca demo ve açık `--headless` rapor komutu geçmiş kayıtları işler; canlı panel kullanıcının başlattığı andan ilerler.
 
 ```bash
 # Onboarding’i atlayarak TUI
@@ -65,12 +73,15 @@ Yalnızca seçili projenin kanonik cwd’siyle eşleşen oturumlar kabul edilir.
 | `1`–`6`, Tab, ←/→  | LIVE, WHY, CODE, VISUALIZE, ASK, REPORT             |
 | ↑/↓ veya J/K       | Kaydır                                              |
 | Space, PgDn / PgUp | Sayfa kaydır                                        |
+| B                  | Seçili görev için öğrenmeyi başlat                  |
+| D                  | Gözlemi durdur, devam eden model isteğini iptal et  |
 | S                  | Ayarlar / onboarding’i yeniden çalıştır             |
 | C                  | Aynı projedeki Codex oturumunu elle seç             |
 | G                  | Güncel kanıtlardan açıklama iste                    |
 | E                  | Markdown raporunu Academy state dizinine aktar      |
 | Z                  | Academy pane’ini Herdr zoom ile genişlet / geri dön |
-| Q, Ctrl+C          | Yalnızca Academy’den çık                            |
+| Q                  | Academy pane’ini kapat; bağımsız TUI’den çık        |
+| Ctrl+C             | Academy uygulamasından çık                          |
 | `[` / `]`          | Önceki / sonraki ders                               |
 | WHY: `,` / `.`     | Önceki / sonraki ders bölümü                        |
 | WHY: Enter         | İçindekiler / odaklı okuma                          |
@@ -189,9 +200,9 @@ Kendi Ubuntu ortamınızda link işleminden sonra:
 1. Codex’i her zamanki gibi başlatın ve yeni bir görev verin.
 2. Academy open eylemini çağırın; sağ pane’in yaklaşık %38 olduğunu kontrol edin.
 3. Onboarding’i tamamlayın, gerekirse C ile oturumu seçin.
-4. Codex komut ve test çalıştırırken LIVE kayıtlarının geldiğini doğrulayın.
+4. Panelin beklemede olduğunu ve model isteği yapmadığını doğrulayın; B ile başlatıp Codex komut/test çalıştırırken LIVE kayıtlarını izleyin.
 5. Yerel model ayarlayın; G, WHY ve ASK ile kanıta bağlı yanıtları inceleyin.
-6. Codex turu bitince REPORT / E ile raporu kontrol edin.
+6. D ile durdurup yeni olayların işlenmediğini kontrol edin. B ile yeniden seçtiğiniz işi izleyin. Tur bitince REPORT / E ile raporu ve bekleme durumunu kontrol edin.
 7. Toggle/close çağırın; Codex’in çalışmaya devam ettiğini doğrulayın.
 8. İkinci workspace’te farklı proje başlatın; oturumların karışmadığını kontrol edin.
 

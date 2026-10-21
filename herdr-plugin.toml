@@ -19,18 +19,18 @@ command = ["scripts/academy.sh", "--pane"]
 
 [[actions]]
 id = "open"
-title = "Academy: aç"
+title = "Academy: paneli aç (beklemede)"
 contexts = ["pane", "workspace"]
 command = ["scripts/academy.sh", "--action", "open"]
 
 [[actions]]
 id = "close"
-title = "Academy: kapat"
+title = "Academy: paneli kapat"
 contexts = ["pane", "workspace"]
 command = ["scripts/academy.sh", "--action", "close"]
 
 [[actions]]
 id = "toggle"
-title = "Academy: aç / kapat"
+title = "Academy: paneli aç / kapat"
 contexts = ["pane", "workspace"]
 command = ["scripts/academy.sh", "--action", "toggle"]

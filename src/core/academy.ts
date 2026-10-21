@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import type { AcademyEvent, Lesson, Question, Session, Stage, Usage } from './types.js';
 import type { Config } from '../storage/config.js';
 import { LessonStore } from '../storage/store.js';
-import { CodexSessionAdapter, matchSessions } from '../adapters/codex.js';
+import { CodexSessionAdapter, matchSessions, type CodexCheckpoint } from '../adapters/codex.js';
 import { EvidenceCollector } from './evidence.js';
 import { GitChangeTracker } from './git.js';
 import { EngineeringMilestoneDetector } from './milestones.js';
@@ -13,6 +13,7 @@ import { generateReport, exportReport } from './report.js';
 import { associatedPane, createHerdrCall } from '../integration/herdr.js';
 
 export interface AcademySnapshot {
+  learning: 'paused' | 'starting' | 'active' | 'finishing';
   sessions: Session[];
   selected?: Session;
   events: AcademyEvent[];
@@ -27,6 +28,7 @@ export interface AcademySnapshot {
 }
 export class Academy extends EventEmitter {
   snapshot: AcademySnapshot = {
+    learning: 'paused',
     sessions: [],
     events: [],
     lessons: [],
@@ -54,6 +56,9 @@ export class Academy extends EventEmitter {
   private work?: Promise<void>;
   private questionBusy = false;
   private identity?: { kind: string; value: string };
+  private captureCheckpoint?: CodexCheckpoint;
+  private window?: { after: number; started: string; task?: AcademyEvent; id: string };
+  private controlsGeneration = 0;
   constructor(
     readonly root: string,
     readonly sessionRoot: string,
@@ -96,19 +101,106 @@ export class Academy extends EventEmitter {
     if (this.snapshot.selected) this.snapshot.usage = this.store.usage(this.snapshot.selected);
     this.emit('change', this.snapshot);
   }
-  start() {
+  watch() {
+    if (this.timer || this.stopped) return;
     void this.tick();
     this.timer = setInterval(() => void this.tick(), 1000);
   }
-  setConfig(config: Config) {
+  async beginLearning({ replay = false } = {}) {
+    if (this.stopped) throw new Error('Academy kapatıldı.');
+    if (this.snapshot.learning !== 'paused') return;
+    if (this.snapshot.busy) throw new Error('Mevcut isteğin tamamlanmasını bekleyin.');
+    const controls = this.controlsGeneration;
+    while (this.polling && !this.stopped) await new Promise((resolve) => setTimeout(resolve, 10));
+    // Discovery is local and never starts capture or a model request.
+    await this.tick();
+    if (controls !== this.controlsGeneration || this.stopped || this.snapshot.learning !== 'paused')
+      return;
+    const selected = this.snapshot.selected;
+    if (!selected)
+      throw new Error('Önce Codex oturumunu başlatın; birden fazla varsa C ile seçin.');
+    const generation = ++this.generation;
+    this.snapshot.learning = 'starting';
+    this.snapshot.status = 'Seçili görev için öğrenme başlatılıyor…';
+    this.emitChange();
+    try {
+      const tail = replay ? undefined : await this.adapter.tail(selected);
+      if (generation !== this.generation || this.stopped) return;
+      this.window = {
+        after: replay ? 0 : this.store.eventCursor(selected),
+        started: new Date().toISOString(),
+        task: tail?.task,
+        id: hash(`${selected.id}|${Date.now()}|${generation}`),
+      };
+      this.store.setMeta('capture:' + this.store.key(selected), JSON.stringify(this.window));
+      this.captureCheckpoint = tail?.checkpoint ?? this.store.checkpoint(selected.file);
+      this.pending = false;
+      this.manualPending = false;
+      this.lastRequest = 0;
+      this.lastGit = 0;
+      this.detector = new EngineeringMilestoneDetector();
+      if (tail?.task) {
+        this.store.ingest(selected, [tail.task]);
+        this.detector.observe(tail.task);
+        this.pending = true;
+      }
+      this.snapshot.events = this.windowEvents(selected);
+      this.snapshot.eventCount = this.windowCount(selected);
+      this.snapshot.stage = 'INVESTIGATING';
+      this.snapshot.report = undefined;
+      this.snapshot.learning = 'active';
+      this.snapshot.status = 'Öğrenme açık · bu görev / sonraki gözlenen tur';
+      this.emitChange();
+      await this.tick();
+    } catch (error) {
+      if (generation === this.generation)
+        this.pauseLearning('Başlatılamadı; B ile tekrar deneyin.');
+      throw error;
+    }
+  }
+  pauseLearning(message = 'Durduruldu · yeniden öğrenmek için B Başlat.') {
+    this.controlsGeneration++;
     this.controller?.abort();
     this.generation++;
+    this.pending = false;
+    this.manualPending = false;
+    this.captureCheckpoint = undefined;
+    this.snapshot.learning = 'paused';
+    this.snapshot.status = message;
+    this.emitChange();
+  }
+  private windowEvents(session: Session, limit = 400) {
+    const events =
+      limit === 400
+        ? this.store.contextEvents(session, this.window?.after ?? 0)
+        : this.store.events(session, limit, this.window?.after ?? 0);
+    const task = this.window?.task ?? this.store.firstTask(session, this.window?.after ?? 0);
+    if (task && !events.some((e) => e.id === task.id)) events.unshift(task);
+    return events;
+  }
+  private windowCount(session: Session) {
+    const count = this.store.count(session, this.window?.after ?? 0);
+    return (
+      count +
+      (this.window?.task &&
+      !this.store.hasEventAfter(session, this.window.task.id, this.window.after)
+        ? 1
+        : 0)
+    );
+  }
+  private captureEvidence(events: AcademyEvent[]) {
+    return this.window
+      ? events.map((event) => ({ ...event, id: hash(this.window!.id + '|' + event.id) }))
+      : events;
+  }
+  setConfig(config: Config) {
+    this.pauseLearning('Ayarlar kaydedildi · B ile öğrenmeyi başlat.');
     this.config = config;
     this.engine = this.makeEngine();
-    this.pending = true;
     this.emitChange();
   }
   async stop() {
+    this.pauseLearning('Academy kapatılıyor.');
     this.stopped = true;
     if (this.timer) clearInterval(this.timer);
     this.controller?.abort();
@@ -117,16 +209,26 @@ export class Academy extends EventEmitter {
   }
   async select(session: Session, manual = true) {
     if (session.cwd !== this.root) throw new Error('Oturum proje bağlamıyla eşleşmiyor.');
+    if (this.snapshot.selected?.id === session.id) {
+      this.manual = manual;
+      return;
+    }
+    if (manual || this.snapshot.learning !== 'paused' || this.snapshot.busy)
+      this.pauseLearning('Oturum seçildi · B ile öğrenmeyi başlat.');
     this.controller?.abort();
     this.generation++;
     this.manual = manual;
     this.pending = false;
     this.manualPending = false;
+    this.window = undefined;
+    const window = this.store.getMeta('capture:' + this.store.key(session));
+    if (window) this.window = JSON.parse(window);
     this.snapshot = {
       ...this.snapshot,
       selected: session,
-      events: this.store.contextEvents(session),
+      events: this.windowEvents(session),
       lessons: this.store.lessons(session),
+      eventCount: this.windowCount(session),
       report: undefined,
     };
     this.detector = new EngineeringMilestoneDetector();
@@ -134,7 +236,7 @@ export class Academy extends EventEmitter {
     this.snapshot.stage = this.detector.stage;
     this.lastGit = 0;
     this.lastRequest = Number(this.store.getMeta('request:' + this.store.key(session)) ?? 0);
-    this.snapshot.status = `Bağlı · ${session.id.slice(0, 12)}`;
+    this.snapshot.status = `Hazır · ${session.id.slice(0, 12)} · B Başlat`;
     this.emitChange();
   }
   async tick() {
@@ -170,14 +272,38 @@ export class Academy extends EventEmitter {
         this.lastDiscovery = Date.now();
       }
       const selected = this.snapshot.selected;
-      if (selected) {
+      if (selected && this.snapshot.learning === 'active') {
+        const generation = this.generation;
+        const current = () =>
+          generation === this.generation && this.snapshot.learning === 'active' && !this.stopped;
         let more = true;
         let batches = 0;
         let ended = false;
+        let nextTask = false;
         while (more && batches++ < 4) {
-          const batch = await this.adapter.read(selected, this.store.checkpoint(selected.file));
+          const batch = await this.adapter.read(selected, this.captureCheckpoint);
+          if (!current()) return;
           more = batch.more;
-          const fresh = this.store.ingest(selected, batch.events, batch.checkpoint);
+          this.captureCheckpoint = batch.checkpoint;
+          // A single read may already contain the next task. It needs another explicit start.
+          const completion = batch.events.findIndex((e) => e.kind === 'completed');
+          let events = completion >= 0 ? batch.events.slice(0, completion + 1) : batch.events;
+          for (let i = 0; i < events.length; i++) {
+            const event = events[i]!;
+            if (event.kind !== 'task' || !this.window) continue;
+            if (!this.window.task) {
+              this.window.task = event;
+              this.store.setMeta(
+                'capture:' + this.store.key(selected),
+                JSON.stringify(this.window),
+              );
+            } else if (event.text !== this.window.task.text) {
+              events = events.slice(0, i);
+              nextTask = true;
+              break;
+            }
+          }
+          const fresh = this.store.ingest(selected, events, batch.checkpoint);
           if (batch.warnings.length) this.snapshot.warning = batch.warnings[0];
           for (const e of fresh) {
             if (this.detector.observe(e)) this.pending = true;
@@ -185,26 +311,54 @@ export class Academy extends EventEmitter {
           }
           if (fresh.length && !this.snapshot.lessons.length) this.pending = true;
           if (fresh.length) {
-            this.store.ingest(selected, await this.collector.sources(selected, fresh));
-            this.snapshot.events = this.store.contextEvents(selected);
+            const sources = await this.collector.sources(selected, fresh);
+            if (!current()) return;
+            this.store.ingest(selected, this.captureEvidence(sources));
+            this.snapshot.events = this.windowEvents(selected);
             this.snapshot.stage = this.detector.stage;
+          }
+          if (nextTask) break;
+          if (completion >= 0) {
+            ended = true;
+            break;
           }
         }
         if (Date.now() - this.lastGit > 8000) {
           const git = await this.git.collect(selected);
+          if (!current()) return;
           this.snapshot.selected = git.session;
-          this.store.ingest(git.session, git.events);
-          this.snapshot.events = this.store.contextEvents(git.session);
+          this.store.ingest(git.session, this.captureEvidence(git.events));
+          this.snapshot.events = this.windowEvents(git.session);
           this.lastGit = Date.now();
         }
-        this.snapshot.eventCount = this.store.count(selected);
-        if (ended) await this.export();
+        this.snapshot.eventCount = this.windowCount(selected);
+        if (nextTask) {
+          this.pauseLearning('Yeni görev görüldü · öğrenmek için yeniden B Başlat.');
+          await this.export();
+          return;
+        }
+        if (ended) {
+          this.snapshot.stage = 'COMPLETED';
+          this.snapshot.learning = 'finishing';
+          this.snapshot.status = 'Tur tamamlandı · son değerlendirme hazırlanıyor.';
+          this.pending = true;
+          await this.export();
+          if (generation !== this.generation || this.stopped) return;
+          if (!this.config.provider.autoAnalyze) this.finishLearning();
+        }
         if (
           this.pending &&
           !this.snapshot.busy &&
           (this.config.provider.autoAnalyze || this.manualPending)
         )
-          this.schedule(this.manualPending);
+          this.schedule(this.manualPending || ended);
+      } else if (
+        selected &&
+        this.snapshot.learning === 'finishing' &&
+        this.pending &&
+        !this.snapshot.busy
+      ) {
+        this.schedule(true);
       }
       this.emitChange();
     } catch (e) {
@@ -215,6 +369,9 @@ export class Academy extends EventEmitter {
     }
   }
   requestLesson() {
+    if (this.snapshot.busy) throw new Error('Mevcut açıklama tamamlanınca tekrar deneyin.');
+    if (!this.snapshot.selected || !this.snapshot.events.length)
+      throw new Error('Önce B ile seçtiğiniz görevi gözlemleyin.');
     this.pending = true;
     this.manualPending = true;
     this.schedule(true);
@@ -232,27 +389,49 @@ export class Academy extends EventEmitter {
     const generation = this.generation;
     const stage = this.snapshot.stage;
     const events = [...this.snapshot.events];
-    const key = hash(JSON.stringify([events.map((e) => e.id), stage, this.config]));
+    const key = hash(
+      JSON.stringify([this.window?.id, events.map((e) => e.id), stage, this.config]),
+    );
     this.controller = new AbortController();
     const signal = this.controller.signal;
     const engine = this.engine;
     this.work = (async () => {
       try {
         if (this.store.getMeta('lesson-cache:' + this.store.key(s)) === key) return;
-        const lesson = await engine.lesson(s.id, stage, events, this.snapshot.lessons, signal);
+        const lesson = await engine.lesson(
+          s.id,
+          stage,
+          events,
+          this.snapshot.lessons.filter((l) => !this.window || l.captureId === this.window.id),
+          signal,
+        );
         if (generation !== this.generation || this.stopped) return;
-        lesson.id = hash(this.store.key(s) + '|' + lesson.id);
+        lesson.id = hash(this.store.key(s) + '|' + (this.window?.id ?? '') + '|' + lesson.id);
+        lesson.captureId = this.window?.id;
         this.store.saveLesson(s, lesson);
         this.snapshot.lessons = this.store.lessons(s);
         if (!lesson.error) this.store.setMeta('lesson-cache:' + this.store.key(s), key);
-        if (stage === 'COMPLETED') this.snapshot.report = await this.export();
+        if (stage === 'COMPLETED') await this.export();
       } catch (e) {
         if (!signal.aborted) this.snapshot.warning = safeText((e as Error).message, 300);
       } finally {
         this.snapshot.busy = false;
+        if (
+          generation === this.generation &&
+          this.snapshot.learning === 'finishing' &&
+          !this.pending
+        )
+          this.finishLearning();
         this.emitChange();
       }
     })();
+  }
+  private finishLearning() {
+    this.pending = false;
+    this.manualPending = false;
+    this.captureCheckpoint = undefined;
+    this.snapshot.learning = 'paused';
+    this.snapshot.status = 'Tur tamamlandı · sonraki iş için B Başlat.';
   }
   async settle() {
     await this.work;
@@ -294,23 +473,25 @@ export class Academy extends EventEmitter {
   report() {
     const s = this.snapshot.selected;
     if (!s) return 'Henüz seçili oturum yok.';
-    const events = this.store.events(s, 3000);
-    const firstTask = this.store.firstTask(s);
-    if (firstTask && !events.some((e) => e.id === firstTask.id)) events.unshift(firstTask);
-    const lessons = this.store.lessons(s, 200);
+    const events = this.windowEvents(s, 3000);
+    const lessons = this.store
+      .lessons(s, 200)
+      .filter((l) => !this.window || l.captureId === this.window.id);
     return generateReport(
       s,
       events,
       lessons,
       lessons.flatMap((l) => this.store.questions(l, 10)),
-      this.store.count(s),
+      this.windowCount(s),
     );
   }
   async export() {
     const s = this.snapshot.selected;
     if (!s) throw new Error('Önce bir Codex oturumu seçin.');
-    const file = await exportReport(this.stateDir, s, this.report());
-    this.snapshot.report = file;
+    const captureId = this.window?.id;
+    const file = await exportReport(this.stateDir, s, this.report(), captureId);
+    if (this.snapshot.selected?.id === s.id && this.window?.id === captureId)
+      this.snapshot.report = file;
     return file;
   }
 }

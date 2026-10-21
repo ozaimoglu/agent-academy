@@ -25,7 +25,7 @@ it('runs the entire deterministic fixture through discovery, teaching, source ev
     {},
   );
   try {
-    await academy.tick();
+    await academy.beginLearning({ replay: true });
     await academy.settle();
     expect(academy.snapshot.stage).toBe('COMPLETED');
     expect(
@@ -55,7 +55,7 @@ it('requires manual selection with multiple same-project sessions, then isolates
     await academy.tick();
     expect(academy.snapshot.selected).toBeUndefined();
     await academy.select(academy.snapshot.sessions.find((s) => s.id === 'b')!);
-    await academy.tick();
+    await academy.beginLearning({ replay: true });
     await academy.settle();
     expect(academy.snapshot.events.map((e) => e.text)).toContain('task B');
     expect(academy.snapshot.events.map((e) => e.text)).not.toContain('task A');
@@ -70,7 +70,7 @@ it('coalesces command-heavy batches and respects analysis frequency', async () =
   const store = new LessonStore(path.join(d, 'state'));
   const academy = new Academy(root, sessions, path.join(d, 'state'), defaultConfig(), store, {});
   try {
-    await academy.tick();
+    await academy.beginLearning({ replay: true });
     await academy.settle();
     expect(academy.snapshot.lessons).toHaveLength(1);
     const { appendFile } = await import('node:fs/promises');
@@ -222,7 +222,7 @@ it('integrates HTTP teaching, cited Q&A, persistent history and a usage ledger',
     {},
   );
   try {
-    await academy.tick();
+    await academy.beginLearning({ replay: true });
     await academy.settle();
     const lesson = academy.snapshot.lessons[0]!;
     expect(lesson.provider).toBe('local:fixture-model');
@@ -291,7 +291,7 @@ it('writes an evidence report on completion even when automatic model analysis i
     {},
   );
   try {
-    await academy.tick();
+    await academy.beginLearning({ replay: true });
     expect(academy.snapshot.lessons).toHaveLength(0);
     expect(academy.snapshot.report).toBeTruthy();
     expect(await readFile(academy.snapshot.report!, 'utf8')).toContain('Gerçek test sonuçları');
@@ -317,7 +317,7 @@ it('allows retry after a failed explanation without needing another coding event
     {},
   );
   try {
-    await academy.tick();
+    await academy.beginLearning({ replay: true });
     await academy.settle();
     expect(academy.snapshot.lessons[0]?.error).toContain('HTTP 503');
     academy.requestLesson();
@@ -363,9 +363,9 @@ it('namespaces lessons even if different projects contain copied native session 
     {},
   );
   try {
-    await a.tick();
+    await a.beginLearning({ replay: true });
     await a.settle();
-    await b.tick();
+    await b.beginLearning({ replay: true });
     await b.settle();
     expect(a.snapshot.lessons[0]?.id).not.toBe(b.snapshot.lessons[0]?.id);
     expect(store.lessons(a.snapshot.selected!)).toHaveLength(1);

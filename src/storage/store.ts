@@ -61,33 +61,46 @@ export class LessonStore {
       throw e;
     }
   }
-  events(s: Session, limit = 400): AcademyEvent[] {
+  eventCursor(s: Session): number {
+    return Number(
+      this.db.prepare('SELECT coalesce(max(seq),0) n FROM events WHERE session=?').get(this.key(s))
+        ?.n ?? 0,
+    );
+  }
+  hasEventAfter(s: Session, id: string, after: number): boolean {
+    return !!this.db
+      .prepare('SELECT 1 FROM events WHERE session=? AND id=? AND seq>?')
+      .get(this.key(s), id, after);
+  }
+  events(s: Session, limit = 400, after = 0): AcademyEvent[] {
     return this.db
       .prepare(
-        'SELECT data FROM (SELECT seq,data FROM events WHERE session=? ORDER BY seq DESC LIMIT ?) ORDER BY seq',
+        'SELECT data FROM (SELECT seq,data FROM events WHERE session=? AND seq>? ORDER BY seq DESC LIMIT ?) ORDER BY seq',
       )
-      .all(this.key(s), limit)
+      .all(this.key(s), after, limit)
       .map((r) => this.json<AcademyEvent>(r)!);
   }
-  latestTask(s: Session): AcademyEvent | undefined {
+  latestTask(s: Session, after = 0): AcademyEvent | undefined {
     return this.json(
       this.db
         .prepare(
-          "SELECT data FROM events WHERE session=? AND kind='task' ORDER BY seq DESC LIMIT 1",
+          "SELECT data FROM events WHERE session=? AND seq>? AND kind='task' ORDER BY seq DESC LIMIT 1",
         )
-        .get(this.key(s)),
+        .get(this.key(s), after),
     );
   }
-  firstTask(s: Session): AcademyEvent | undefined {
+  firstTask(s: Session, after = 0): AcademyEvent | undefined {
     return this.json(
       this.db
-        .prepare("SELECT data FROM events WHERE session=? AND kind='task' ORDER BY seq LIMIT 1")
-        .get(this.key(s)),
+        .prepare(
+          "SELECT data FROM events WHERE session=? AND seq>? AND kind='task' ORDER BY seq LIMIT 1",
+        )
+        .get(this.key(s), after),
     );
   }
-  contextEvents(s: Session): AcademyEvent[] {
-    const events = this.events(s);
-    const task = this.latestTask(s);
+  contextEvents(s: Session, after = 0): AcademyEvent[] {
+    const events = this.events(s, 400, after);
+    const task = this.latestTask(s, after);
     if (task && !events.some((e) => e.id === task.id)) events.unshift(task);
     return events;
   }
@@ -159,9 +172,11 @@ export class LessonStore {
       .get(this.key(s))!;
     return { input: Number(r.i), output: Number(r.o), estimated: !!r.e };
   }
-  count(s: Session): number {
+  count(s: Session, after = 0): number {
     return Number(
-      this.db.prepare('SELECT count(*) n FROM events WHERE session=?').get(this.key(s))?.n ?? 0,
+      this.db
+        .prepare('SELECT count(*) n FROM events WHERE session=? AND seq>?')
+        .get(this.key(s), after)?.n ?? 0,
     );
   }
   close() {

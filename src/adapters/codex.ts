@@ -68,6 +68,59 @@ export async function readJsonl(file: string, previous?: CodexCheckpoint) {
 export class CodexSessionAdapter implements SessionAdapter {
   private cache = new Map<string, { mtime: number; size: number; session?: Session }>();
   constructor(private lookup?: (sessionId: string, callId: string) => string | undefined) {}
+  /** Start at complete EOF, retaining only the latest unfinished task as context.
+   * The bounded scan happens after the user explicitly starts learning. */
+  async tail(s: Session): Promise<{ checkpoint: CodexCheckpoint; task?: AcademyEvent }> {
+    const file = await open(s.file, 'r');
+    try {
+      const st = await file.stat();
+      const header = Buffer.alloc(Math.min(st.size, BATCH));
+      const { bytesRead } = await file.read(header, 0, header.length, 0);
+      const firstEnd = header.subarray(0, bytesRead).indexOf(10);
+      if (firstEnd < 0) throw new Error('Codex oturum başlığı henüz tamamlanmadı.');
+      const metadata = JSON.parse(header.subarray(0, firstEnd).toString('utf8'));
+      if (
+        metadata.type !== 'session_meta' ||
+        metadata.payload?.id !== s.id ||
+        typeof metadata.payload?.cwd !== 'string' ||
+        (await canonical(metadata.payload.cwd)) !== s.cwd
+      )
+        throw new Error('Oturum dosyasının kimliği değişti; yeniden seçin.');
+      const start = Math.max(0, st.size - BATCH);
+      const buffer = Buffer.alloc(st.size - start);
+      await file.read(buffer, 0, buffer.length, start);
+      const last = buffer.lastIndexOf(10);
+      const checkpoint: CodexCheckpoint = {
+        identity: `${st.dev}:${st.ino}`,
+        prefix: hash(header.subarray(0, Math.min(128, st.size)).toString('hex')),
+        offset: last >= 0 ? start + last + 1 : st.size,
+        ...(last < 0 ? { discarding: true } : {}),
+      };
+      const normalizer = new SessionEventNormalizer(s.id);
+      let task: AcademyEvent | undefined;
+      if (last >= 0) {
+        const first = start ? buffer.indexOf(10) + 1 : 0;
+        for (const line of buffer.subarray(first, last).toString('utf8').split('\n')) {
+          try {
+            for (const event of normalizer.normalize(JSON.parse(line))) {
+              if (event.kind === 'task') task = event;
+              if (
+                event.kind === 'completed' ||
+                (event.kind === 'error' && /abort|interrupt|iptal/i.test(event.text))
+              )
+                task = undefined;
+            }
+          } catch {
+            /* Skip a malformed or oversized historical line. */
+          }
+        }
+      }
+      checkpoint.turnId = normalizer.turnId;
+      return { checkpoint, task };
+    } finally {
+      await file.close();
+    }
+  }
   async discover(root: string): Promise<Session[]> {
     const candidates: { file: string; mtime: number; size: number }[] = [];
     const walk = async (dir: string, depth: number): Promise<void> => {

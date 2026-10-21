@@ -11,7 +11,7 @@ import { checkCodex } from './providers/codex-cli.js';
 import { LessonStore } from './storage/store.js';
 import { Academy } from './core/academy.js';
 import { AcademyTUI } from './ui/app.js';
-import { pluginAction, createHerdrCall } from './integration/herdr.js';
+import { pluginAction, createHerdrCall, closeAcademyPane } from './integration/herdr.js';
 import { prepareDemo } from './demo.js';
 
 const help = `Agent Academy 0.1.0 · Yerel mühendislik öğrenme arkadaşı
@@ -32,7 +32,8 @@ Rapor demosu: npm start -- --demo --headless
 --doctor             Araç ve veri erişimi tanısı
 --help               Bu yardım
 
-TUI: 1–6 sekme · S ayarlar · C oturum · G açıkla · E dışa aktar · Z geniş · Q çık
+Panel beklemede açılır. B başlat · D durdur · Q paneli kapat / çık
+TUI: 1–6 sekme · S ayarlar · C oturum · G açıkla · E dışa aktar · Z geniş
 WHY: ,/. bölüm · Enter içindekiler · [/] ders
 ASK: A yaz · P öneri · K kavram · Enter sor`;
 async function main() {
@@ -148,8 +149,12 @@ async function main() {
     if (values.headless) {
       if (!academy.snapshot.selected)
         throw new Error(academy.snapshot.status + ' --session ID ile seçin.');
-      academy.requestLesson();
+      await academy.beginLearning({ replay: true });
       await academy.settle();
+      if (!config.provider.autoAnalyze) {
+        academy.requestLesson();
+        await academy.settle();
+      }
       console.log(academy.report());
       console.error('Rapor: ' + (await academy.export()));
       return;
@@ -164,6 +169,13 @@ async function main() {
         initialConfig={config}
         configDir={paths.config}
         demo={values.demo}
+        onClosePanel={
+          values.pane && process.env.HERDR_ENV === '1'
+            ? async () => {
+                await closeAcademyPane();
+              }
+            : undefined
+        }
       />,
       { exitOnCtrlC: true },
     );

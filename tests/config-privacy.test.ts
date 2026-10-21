@@ -18,10 +18,22 @@ it('persists all onboarding preferences atomically with restrictive permissions'
   expect(config.provider.kind).toBe('offline');
   config.onboarded = true;
   config.styles = ['code', 'senior'];
-  config.priorities = ['spring'];
+  config.priorities = ['fundamentals'];
   await saveConfig(dir, config);
   expect(await loadConfig(dir)).toEqual(config);
   expect((await stat(path.join(dir, 'settings.json'))).mode & 0o777).toBe(0o600);
+});
+it('migrates technology-specific priorities to general learning goals without losing provider settings', async () => {
+  const dir = await temp();
+  const config = defaultConfig();
+  config.onboarded = true;
+  config.priorities = ['spring', 'frontend', 'architecture'];
+  config.provider.minIntervalSeconds = 180;
+  await writeFile(path.join(dir, 'settings.json'), JSON.stringify(config));
+  const loaded = await loadConfig(dir);
+  expect(loaded.priorities).toEqual(['fundamentals', 'code', 'architecture']);
+  expect(loaded.onboarded).toBe(true);
+  expect(loaded.provider.minIntervalSeconds).toBe(180);
 });
 it('does not silently replace malformed settings', async () => {
   const dir = await temp();

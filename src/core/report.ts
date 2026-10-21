@@ -72,10 +72,15 @@ export function generateReport(
   );
   return safeText(lines.join('\n\n') + '\n', 2 * 1024 * 1024);
 }
-export async function exportReport(state: string, s: Session, markdown: string) {
+export async function exportReport(
+  state: string,
+  s: Session,
+  markdown: string,
+  captureId?: string,
+) {
   const dir = path.join(state, 'reports', hash(s.cwd));
   await mkdir(dir, { recursive: true, mode: 0o700 });
-  const file = path.join(dir, hash(s.id) + '.md');
+  const file = path.join(dir, hash(s.id + (captureId ? '|' + captureId : '')) + '.md');
   const temporary = `${file}.${process.pid}.tmp`;
   await writeFile(temporary, markdown, { mode: 0o600 });
   await rename(temporary, file);

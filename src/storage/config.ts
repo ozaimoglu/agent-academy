@@ -21,6 +21,23 @@ export const providerSchema = z.object({
   codexCredentialStore: z.enum(['auto', 'file', 'keyring']).default('auto'),
   autoAnalyze: z.boolean().default(true),
 });
+export const learningPriorities = [
+  ['debugging', 'Hata ayıklama ve kök neden'],
+  ['fundamentals', 'Temel kavramlar ve mekanizmalar'],
+  ['architecture', 'Mimari ve tasarım kararları'],
+  ['performance', 'Performans ve eşzamanlılık'],
+  ['testing', 'Test ve doğrulama'],
+  ['security', 'Güvenlik ve güvenilirlik'],
+  ['code', 'Kod okuma ve uygulama'],
+  ['everything', 'Projedeki tüm konular'],
+] as const;
+const normalizePriorities = (value: unknown) => {
+  if (!Array.isArray(value)) return value;
+  const generic = value
+    .map((id) => (id === 'spring' ? 'fundamentals' : id === 'frontend' ? 'code' : id))
+    .filter((id) => learningPriorities.some(([key]) => key === id));
+  return generic.includes('everything') || !generic.length ? ['everything'] : [...new Set(generic)];
+};
 export const configSchema = z.object({
   version: z.literal(1).default(1),
   onboarded: z.boolean().default(false),
@@ -30,7 +47,7 @@ export const configSchema = z.object({
     .array(z.enum(['visual', 'code', 'fundamentals', 'senior', 'interactive']))
     .min(1)
     .default(['visual', 'code', 'fundamentals', 'senior']),
-  priorities: z.array(z.string()).min(1).default(['everything']),
+  priorities: z.preprocess(normalizePriorities, z.array(z.string()).min(1)).default(['everything']),
   panelWidth: z.number().min(25).max(60).default(38),
   provider: providerSchema.default(() => providerSchema.parse({})),
 });

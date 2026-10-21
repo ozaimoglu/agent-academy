@@ -67,6 +67,15 @@ herdr plugin action invoke local.agent-academy.open
 
 Academy opens in a **right-side split**, approximately **38%** wide by default. Installation registers a Herdr plugin; it does not change your Codex configuration or require a different launch command.
 
+**Opening the panel does not start learning.** Focus the Academy pane and press **B · Başlat** for the task you want to learn from. Press **D · Durdur** to stop capture and cancel an in-flight explanation. On task completion, Academy prepares the final debrief and returns to standby; the next task needs another **B**. Press **Q** inside the panel to close it, or use:
+
+```bash
+herdr plugin action invoke local.agent-academy.close
+herdr plugin action invoke local.agent-academy.toggle
+```
+
+Standby performs local session discovery only: no event ingestion, source/diff collection or automatic model requests. Restarting learning skips completed work from the stopped period. An ongoing task's latest message may be retained as context; preceding investigation events are not backfilled. Existing lessons remain readable, and explicit **G / ASK** requests can still use the configured model without enabling capture.
+
 <details>
 <summary><strong>Install from a local checkout</strong></summary>
 
@@ -90,14 +99,16 @@ herdr plugin action invoke local.agent-academy.close
 
 The onboarding runs **inside the product**:
 
-| Step               | Choose                                                                      | Default                                            |
-| ------------------ | --------------------------------------------------------------------------- | -------------------------------------------------- |
-| **1 · Depth**      | Quick summary, balanced, or deep explanations                               | Deep                                               |
-| **2 · Style**      | Visuals, real code, fundamentals, senior engineering, interaction           | Visuals + code + fundamentals + senior engineering |
-| **3 · Priorities** | Debugging, Spring, architecture, concurrency, testing, security, TypeScript | Everything                                         |
-| **4 · Model**      | Offline, existing Codex quota, local, or remote explanation provider        | Offline                                            |
+| Step               | Choose                                                                                | Default                                            |
+| ------------------ | ------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **1 · Depth**      | Quick summary, balanced, or deep explanations                                         | Deep                                               |
+| **2 · Style**      | Visuals, real code, fundamentals, senior engineering, interaction                     | Visuals + code + fundamentals + senior engineering |
+| **3 · Priorities** | Debugging, fundamentals, design decisions, performance, tests, security, code reading | All project topics                                 |
+| **4 · Model**      | Offline, existing Codex quota, local, or remote explanation provider                  | Offline                                            |
 
 Use arrow keys, Space, and Enter. Advanced provider settings are expandable. Press **S** later to revisit your preferences.
+
+Preferences describe how you learn, across projects and technology stacks. Relevant languages and frameworks are inferred from observed project evidence. Older Spring/TypeScript preferences migrate to fundamentals/code reading; provider credentials and consent are preserved. Saving onboarding leaves the panel in standby.
 
 If Herdr provides a reliable native session identity, Academy uses it. Otherwise it matches the exact project directory. When several sessions match, press **C** to choose one.
 
@@ -113,6 +124,8 @@ npm run demo
 ```
 
 The demo runs the **same JSONL adapter, evidence collector, lesson pipeline, SQLite store, and report exporter** used by live mode, against an isolated deterministic Spring transaction fixture. It never calls a remote model. Its recorded Java test results are synthetic fixture data; Academy does not execute those Java tests.
+
+Complete onboarding, then press **B** to replay the demo. Live mode starts at the current position; only the explicitly selected demo and headless replay process historical fixture records.
 
 Already built? Export a demo report without an interactive terminal:
 
@@ -187,7 +200,7 @@ Remote source sharing requires explicit project-specific opt-in. HTTP explanatio
 
 **v0.1.0 MVP.** The application is implemented; validation scope is documented openly.
 
-- **71 automated tests** cover onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation, including a real subprocess boundary for the Codex provider.
+- **85 automated tests** cover onboarding, live-format parsing, partial writes, deduplication, session matching, reconnection, milestones, evidence, providers, privacy, Q&A, reports, and TUI navigation. Coverage includes manual capture controls, aborts, task/report isolation, standby on restart, generic preference migration, pane-close ownership and a real subprocess boundary for the Codex provider.
 - Build, lint, deterministic demo, and actual project-matching **Codex 0.163.0** command/result parsing were verified during development.
 - Herdr pane open/close actions were exercised on the installed macOS server after fixing split targeting; the launcher is tested from another project directory. Direct socket inspection and real loopback HTTP tests were restricted by the development sandbox. End-to-end validation on Ubuntu and real-model explanation quality remain to be completed.
 - Codex rollout JSONL is an internal compatibility surface, so future format changes may require adapter updates. Claude Code/OpenCode adapters, semantic call graphs, browser rendering, and automatic documentation retrieval are outside this MVP.
